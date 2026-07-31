@@ -1,0 +1,239 @@
+/* ------------------------------------------------------------------
+   jpcoakley.com — design language drawn from the Lot Shots mark study
+   paper:  #F4F3EF   ink/blue: #385A8C   accent red: #C82828
+   ------------------------------------------------------------------ */
+
+:root {
+  --paper: #F4F3EF;
+  --blue: #385A8C;
+  --red: #C82828;
+  --ink: #1E2A3A;
+  --muted: #8B8B85;
+  --line: #DDDCD4;
+  --track: 0.32em; /* signature wide letterspacing */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- header / nav ---------- */
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2rem clamp(1.25rem, 5vw, 4rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--blue);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+nav { display: flex; gap: clamp(1rem, 3vw, 2.5rem); }
+
+nav a {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+nav a:hover { color: var(--red); }
+nav a.active { border-bottom-color: var(--red); color: var(--blue); }
+
+/* ---------- shared layout ---------- */
+
+main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
+
+.kicker {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.rule { border: none; border-top: 1px solid var(--line); margin: 4rem 0; }
+
+/* ---------- the donut O (from the Lot Shots mark study) ----------
+   ring size ≈ 0.71 cap-height units above cap, stroke 0.175,
+   gap 0.040, nudged −0.020 x / −0.015 y for optical centring     */
+
+.donut-o {
+  display: inline-block;
+  width: 1.06em;
+  height: 1.06em;
+  border: 0.24em solid var(--red);
+  border-radius: 50%;
+  vertical-align: baseline;
+  margin: 0 0.30em -0.16em 0.02em; /* right margin ≈ tracking + gap 0.040 */
+  transform: translate(-0.02em, -0.015em);
+}
+
+.donut-o.blue { border-color: var(--blue); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- wordmark lockups ---------- */
+
+.wordmark {
+  color: var(--blue);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--track);
+  line-height: 1.35;
+}
+
+.hero {
+  min-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6rem 0 4rem;
+}
+
+.hero .wordmark { font-size: clamp(2.4rem, 8vw, 6rem); }
+
+.hero p.tagline {
+  margin-top: 2rem;
+  max-width: 34rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+/* ---------- section cards ---------- */
+
+.section-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+.card {
+  display: block;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 2.25rem 1.75rem;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.card:hover { border-color: var(--blue); transform: translateY(-2px); }
+
+.card h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 0.6rem;
+}
+
+.card p { font-size: 0.9rem; color: var(--muted); }
+
+/* ---------- photography / galleries ---------- */
+
+.page-title {
+  font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+  margin: 4rem 0 0.5rem;
+}
+
+.lede { max-width: 38rem; color: var(--muted); margin-top: 1rem; }
+
+.lotshots-mark {
+  margin: 5rem auto 3rem;
+  text-align: center;
+  font-size: clamp(2rem, 6vw, 4rem);
+}
+
+.lotshots-mark .line { display: block; }
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-top: 3rem;
+}
+
+.frame {
+  aspect-ratio: 4 / 5;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #EAE9E2 0px, #EAE9E2 18px,
+      #F0EFE8 18px, #F0EFE8 36px
+    );
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frame span {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---------- projects list ---------- */
+
+.projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+/* ---------- footer ---------- */
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 2rem clamp(1.25rem, 5vw, 4rem);
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  header { flex-direction: column; gap: 1rem; }
+}

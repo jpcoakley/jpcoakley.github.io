@@ -179,6 +179,15 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .lotshots-mark .line { display: block; }
 
+.collection-title {
+  margin-top: 3.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

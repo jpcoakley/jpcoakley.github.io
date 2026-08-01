@@ -37,7 +37,7 @@ DATED = re.compile(r"^\d{4}-\d{2}-\d{2}")
 MARK_START = "<!-- SERIES START -->"
 MARK_END = "<!-- SERIES END -->"
 GENERATED_TAG = "<!-- generated-series-page -->"
-RESERVED = {"index", "photography", "projects", "about"}
+RESERVED = {"index", "photography", "projects", "about", "media"}
 MAX_PX = 1600  # longest edge of web copies
 EXTS = {".jpg", ".jpeg", ".png"}
 

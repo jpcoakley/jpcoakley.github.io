@@ -201,8 +201,9 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .tile img {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;          /* shorter, wider tile crop */
   object-fit: cover;
+  object-position: center 30%;   /* favor the upper frame (faces) */
   display: block;
   border-bottom: 1px solid var(--line);
 }

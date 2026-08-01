@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Build web galleries from Lightroom-published photo folders.
 
-Structure:
-  photos/<Series>/                 -> a series section on photography.html
-  photos/<Series>/<Collection>/    -> a titled collection inside that series
-  photos/<Series>/*.jpg            -> loose photos, shown without a sub-heading
+Structure — everything lives under the single Lightroom publish root
+photos/lot-shots/ (one Hard Drive publish service in Lightroom Classic):
 
-The "lot-shots" series renders with its brand block (kicker, wordmark,
-description); any other series gets a plain letterspaced heading from its
-folder name. Series are ordered alphabetically; collections newest-name-first.
+  photos/lot-shots/<YYYY-MM-DD Name>/  -> a dated collection under the
+                                          branded Lot Shots series section
+  photos/lot-shots/<Other Name>/       -> its own top-level series section
+  photos/lot-shots/*.jpg               -> loose photos in the Lot Shots section
+
+So in Lightroom: date-prefix a published folder to file it under Lot Shots;
+any other folder name becomes its own section on the Photography page.
+Series are ordered alphabetically; collections newest-name-first.
 
 Run after publishing from Lightroom Classic, then commit + push (publish.sh
 does all three). photos/ holds full-size exports and stays out of git;
@@ -22,7 +25,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-PHOTOS = ROOT / "photos"
+PHOTOS = ROOT / "photos" / "lot-shots"   # Lightroom's publish root
+DATED = re.compile(r"^\d{4}-\d{2}-\d{2}")
 ASSETS = ROOT / "assets"
 PAGE = ROOT / "photography.html"
 MARK_START = "<!-- SERIES START -->"
@@ -53,16 +57,36 @@ def display(name: str) -> str:
     return name.replace("-", " ").title() if name == name.lower() else name
 
 
-def collections(series_dir: Path):
-    """Yield (display_name, [source files]) — subfolders newest-name-first,
-    then loose files with no heading."""
-    for d in sorted((p for p in series_dir.iterdir() if p.is_dir()), reverse=True):
-        files = sorted(f for f in d.iterdir() if f.suffix.lower() in EXTS)
-        if files:
-            yield d.name, files
-    loose = sorted(f for f in series_dir.iterdir() if f.suffix.lower() in EXTS)
+def photo_files(d: Path):
+    return sorted(f for f in d.iterdir() if f.suffix.lower() in EXTS)
+
+
+def gather_series():
+    """Map the Lightroom publish root onto site series.
+
+    Returns [(display_name, slug, [(collection_name, files), ...])], sorted
+    alphabetically. Dated folders and loose files form the "Lot Shots"
+    series; every other folder is a series of its own.
+    """
+    if not PHOTOS.is_dir():
+        return []
+    lotshots, others = [], []
+    for d in sorted((p for p in PHOTOS.iterdir() if p.is_dir()), reverse=True):
+        files = photo_files(d)
+        if not files:
+            continue
+        if DATED.match(d.name):
+            lotshots.append((d.name, files))
+        else:
+            others.append((display(d.name), slug(d.name), [("", files)]))
+    loose = photo_files(PHOTOS)
     if loose:
-        yield "", loose
+        lotshots.append(("", loose))
+    series = list(others)
+    if lotshots:
+        series.append(("Lot Shots", "lot-shots", lotshots))
+    series.sort(key=lambda s: s[0].lower())
+    return series
 
 
 def resize(src: Path, dest: Path) -> None:
@@ -77,15 +101,9 @@ def resize(src: Path, dest: Path) -> None:
 def main() -> None:
     kept, sections, total = set(), [], 0
 
-    series_dirs = sorted(
-        (p for p in PHOTOS.iterdir() if p.is_dir()),
-        key=lambda p: p.name.lower(),
-    ) if PHOTOS.is_dir() else []
-
-    for sdir in series_dirs:
-        sslug = slug(sdir.name)
+    for sname, sslug, colls in gather_series():
         parts = []
-        for cname, files in collections(sdir):
+        for cname, files in colls:
             cslug = slug(cname) if cname else "all"
             items = []
             for f in files:
@@ -113,11 +131,11 @@ def main() -> None:
             header = LOTSHOTS_BLOCK
         else:
             header = (f'    <h2 class="series-title wordmark">'
-                      f'{html.escape(display(sdir.name))}</h2>')
+                      f'{html.escape(sname)}</h2>')
         body = "\n\n".join([header] + parts)
         sections.append(
             f'  <section class="series" id="{sslug}" '
-            f'aria-label="{html.escape(display(sdir.name))}">\n{body}\n  </section>'
+            f'aria-label="{html.escape(sname)}">\n{body}\n  </section>'
         )
 
     # drop web copies whose originals were unpublished

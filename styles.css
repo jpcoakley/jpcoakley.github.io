@@ -190,21 +190,26 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 }
 
 .gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.25rem;
+  columns: 240px;          /* masonry-style: photos keep native aspect ratio */
+  column-gap: 1.25rem;
   margin-top: 3rem;
 }
 
 .frame {
-  aspect-ratio: 4 / 5;
+  display: block;
+  margin-bottom: 1.25rem;
+  break-inside: avoid;
+  border: 1px solid var(--line);
+}
+
+div.frame {
+  aspect-ratio: 4 / 5;     /* placeholders only */
   background:
     repeating-linear-gradient(
       -45deg,
       rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 18px,
       rgba(255, 255, 255, 0.02) 18px, rgba(255, 255, 255, 0.02) 36px
     );
-  border: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,7 +223,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   color: var(--muted);
 }
 
-.frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame img { width: 100%; height: auto; display: block; }
 
 /* ---------- lightbox ---------- */
 

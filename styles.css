@@ -418,3 +418,12 @@ footer {
 @media (max-width: 560px) {
   header { flex-direction: column; gap: 1rem; }
 }
+
+footer a.contact-link {
+  color: var(--blue);
+  text-decoration: none;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+footer a.contact-link:hover { color: var(--red); }

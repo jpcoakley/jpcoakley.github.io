@@ -81,7 +81,7 @@ SERIES_PAGE = """<!DOCTYPE html>
 
 <footer>
   <span>JP Coakley</span>
-  <span>jpcoakley.com</span>
+  <a class="contact-link" href="mailto:jpcoakley@gmail.com">Contact</a>
 </footer>
 
 </body>

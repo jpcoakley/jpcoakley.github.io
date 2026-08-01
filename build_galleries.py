@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Build web galleries from Lightroom-published photo folders.
 
-Workflow:
-  1. Lightroom Classic publishes JPEGs into photos/lot-shots/<Collection Name>/
-     (or straight into photos/lot-shots/ for an uncategorized gallery).
-  2. Run this script. It:
-       - resizes each photo to web size into assets/lot-shots/... (via macOS sips)
-       - removes web copies whose originals were unpublished
-       - rewrites the gallery markup in photography.html between the
-         LOTSHOTS-GALLERY markers (placeholders stay if there are no photos)
-  3. Commit and push: the live site updates in about a minute.
+Structure:
+  photos/<Series>/                 -> a series section on photography.html
+  photos/<Series>/<Collection>/    -> a titled collection inside that series
+  photos/<Series>/*.jpg            -> loose photos, shown without a sub-heading
 
-photos/ holds Lightroom's full-size exports and stays out of git;
+The "lot-shots" series renders with its brand block (kicker, wordmark,
+description); any other series gets a plain letterspaced heading from its
+folder name. Series are ordered alphabetically; collections newest-name-first.
+
+Run after publishing from Lightroom Classic, then commit + push (publish.sh
+does all three). photos/ holds full-size exports and stays out of git;
 assets/ holds the resized web copies and is committed.
 """
 
@@ -22,13 +22,22 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-PHOTOS = ROOT / "photos" / "lot-shots"
-ASSETS = ROOT / "assets" / "lot-shots"
+PHOTOS = ROOT / "photos"
+ASSETS = ROOT / "assets"
 PAGE = ROOT / "photography.html"
-MARK_START = "<!-- LOTSHOTS-GALLERY START -->"
-MARK_END = "<!-- LOTSHOTS-GALLERY END -->"
+MARK_START = "<!-- SERIES START -->"
+MARK_END = "<!-- SERIES END -->"
 MAX_PX = 1600  # longest edge of web copies
 EXTS = {".jpg", ".jpeg", ".png"}
+
+LOTSHOTS_BLOCK = """    <p class="kicker" style="text-align:center">A portrait series</p>
+    <h2 class="lotshots-mark wordmark" aria-label="Lot Shots">
+      <span class="line" aria-hidden="true">L<span class="donut-o"></span>T</span>
+      <span class="line" aria-hidden="true">SH<span class="donut-o"></span>TS</span>
+    </h2>
+    <p class="lede" style="margin:0 auto; text-align:center">
+      Portraits made in parking lots — one lot, one light, one frame at a time.
+    </p>"""
 
 PLACEHOLDER = "\n".join(
     '      <div class="frame"><span>Coming soon</span></div>' for _ in range(6)
@@ -40,16 +49,18 @@ def slug(name: str) -> str:
     return s or "gallery"
 
 
-def collections():
-    """Yield (display_name, [source files]) — subfolders first (newest name
-    first, so date-prefixed folders sort naturally), then loose files."""
-    if not PHOTOS.is_dir():
-        return
-    for d in sorted((p for p in PHOTOS.iterdir() if p.is_dir()), reverse=True):
+def display(name: str) -> str:
+    return name.replace("-", " ").title() if name == name.lower() else name
+
+
+def collections(series_dir: Path):
+    """Yield (display_name, [source files]) — subfolders newest-name-first,
+    then loose files with no heading."""
+    for d in sorted((p for p in series_dir.iterdir() if p.is_dir()), reverse=True):
         files = sorted(f for f in d.iterdir() if f.suffix.lower() in EXTS)
         if files:
             yield d.name, files
-    loose = sorted(f for f in PHOTOS.iterdir() if f.suffix.lower() in EXTS)
+    loose = sorted(f for f in series_dir.iterdir() if f.suffix.lower() in EXTS)
     if loose:
         yield "", loose
 
@@ -64,19 +75,50 @@ def resize(src: Path, dest: Path) -> None:
 
 
 def main() -> None:
-    built, kept = [], set()
-    for name, files in collections():
-        cslug = slug(name) if name else "all"
-        items = []
-        for f in files:
-            dest = ASSETS / cslug / (f.stem + ".jpg")
-            rel = dest.relative_to(ROOT).as_posix()
-            kept.add(dest)
-            if not dest.exists() or dest.stat().st_mtime < f.stat().st_mtime:
-                resize(f, dest)
-                print(f"  resized {f.name} -> {rel}")
-            items.append(rel)
-        built.append((name, items))
+    kept, sections, total = set(), [], 0
+
+    series_dirs = sorted(
+        (p for p in PHOTOS.iterdir() if p.is_dir()),
+        key=lambda p: p.name.lower(),
+    ) if PHOTOS.is_dir() else []
+
+    for sdir in series_dirs:
+        sslug = slug(sdir.name)
+        parts = []
+        for cname, files in collections(sdir):
+            cslug = slug(cname) if cname else "all"
+            items = []
+            for f in files:
+                dest = ASSETS / sslug / cslug / (f.stem + ".jpg")
+                rel = dest.relative_to(ROOT).as_posix()
+                kept.add(dest)
+                if not dest.exists() or dest.stat().st_mtime < f.stat().st_mtime:
+                    resize(f, dest)
+                    print(f"  resized {f.name} -> {rel}")
+                items.append(rel)
+            total += len(items)
+            grid = "\n".join(
+                f'      <a class="frame" href="{p}" target="_blank">'
+                f'<img src="{p}" alt="" loading="lazy"></a>'
+                for p in items
+            )
+            heading = (
+                f'    <h3 class="collection-title">{html.escape(cname)}</h3>\n'
+                if cname else ""
+            )
+            parts.append(f'{heading}    <div class="gallery">\n{grid}\n    </div>')
+        if not parts:
+            continue
+        if sslug == "lot-shots":
+            header = LOTSHOTS_BLOCK
+        else:
+            header = (f'    <h2 class="series-title wordmark">'
+                      f'{html.escape(display(sdir.name))}</h2>')
+        body = "\n\n".join([header] + parts)
+        sections.append(
+            f'  <section class="series" id="{sslug}" '
+            f'aria-label="{html.escape(display(sdir.name))}">\n{body}\n  </section>'
+        )
 
     # drop web copies whose originals were unpublished
     if ASSETS.is_dir():
@@ -88,25 +130,12 @@ def main() -> None:
             if d.is_dir() and not any(d.iterdir()):
                 d.rmdir()
 
-    # render gallery markup
-    if built:
-        parts = []
-        for name, items in built:
-            grid = "\n".join(
-                f'      <a class="frame" href="{p}" target="_blank">'
-                f'<img src="{p}" alt="" loading="lazy"></a>'
-                for p in items
-            )
-            heading = (
-                f'    <h3 class="collection-title">{html.escape(name)}</h3>\n'
-                if name else ""
-            )
-            parts.append(f'{heading}    <div class="gallery">\n{grid}\n    </div>')
-        body = "\n\n".join(parts)
-        total = sum(len(i) for _, i in built)
-        print(f"built {len(built)} collection(s), {total} photo(s)")
+    if sections:
+        out = '\n\n  <hr class="rule">\n\n'.join(sections)
+        print(f"built {len(sections)} series, {total} photo(s)")
     else:
-        body = f'    <div class="gallery">\n{PLACEHOLDER}\n    </div>'
+        out = (f'  <section class="series">\n{LOTSHOTS_BLOCK}\n'
+               f'    <div class="gallery">\n{PLACEHOLDER}\n    </div>\n  </section>')
         print("no photos found — placeholders left in place")
 
     page = PAGE.read_text()
@@ -114,7 +143,7 @@ def main() -> None:
         sys.exit(f"markers not found in {PAGE.name}")
     head, rest = page.split(MARK_START, 1)
     _, tail = rest.split(MARK_END, 1)
-    PAGE.write_text(f"{head}{MARK_START}\n{body}\n    {MARK_END}{tail}")
+    PAGE.write_text(f"{head}{MARK_START}\n{out}\n  {MARK_END}{tail}")
     print(f"updated {PAGE.name}")
 
 

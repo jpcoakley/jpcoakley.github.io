@@ -180,6 +180,14 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .lotshots-mark .line { display: block; }
 
+.series-title {
+  text-align: center;
+  font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+  margin: 1rem 0 0.5rem;
+}
+
+.series { margin-top: 4rem; }
+
 .collection-title {
   margin-top: 3.5rem;
   font-size: 0.85rem;

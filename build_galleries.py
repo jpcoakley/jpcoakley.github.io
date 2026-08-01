@@ -41,9 +41,8 @@ RESERVED = {"index", "photography", "projects", "about", "media"}
 MAX_PX = 1600  # longest edge of web copies
 EXTS = {".jpg", ".jpeg", ".png"}
 
-# Logo removed for now per JP — plain heading with kicker + description.
-LOTSHOTS_BLOCK = """  <p class="kicker" style="text-align:center">A portrait series</p>
-  <h1 class="series-title wordmark">Lot Shots</h1>
+# Logo removed for now per JP — plain heading + description.
+LOTSHOTS_BLOCK = """  <h1 class="series-title wordmark">Lot Shots</h1>
   <p class="lede" style="margin:0 auto; text-align:center">
     Portraits made in parking lots — one lot, one light, one frame at a time.
   </p>"""

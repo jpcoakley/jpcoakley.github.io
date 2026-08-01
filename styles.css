@@ -148,7 +148,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   display: block;
   border: 1px solid var(--line);
   background: var(--panel);
-  padding: 2.25rem 1.75rem;
+  padding: 1.25rem 1.5rem;
   text-decoration: none;
   color: var(--ink);
   transition: border-color 120ms ease, transform 120ms ease;

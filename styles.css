@@ -4,12 +4,13 @@
    ------------------------------------------------------------------ */
 
 :root {
-  --paper: #F4F3EF;
-  --blue: #385A8C;
-  --red: #C82828;
-  --ink: #1E2A3A;
-  --muted: #8B8B85;
-  --line: #DDDCD4;
+  --paper: #16333A;                    /* dark teal ground */
+  --blue: #8FB0D9;                     /* brand blue, lightened for dark bg */
+  --red: #D8453C;                      /* donut red, brightened for dark bg */
+  --ink: #E9E6DC;                      /* warm light text */
+  --muted: #93A9A7;
+  --line: rgba(233, 230, 220, 0.16);
+  --panel: rgba(255, 255, 255, 0.045); /* card / frame surfaces */
   --track: 0.32em; /* signature wide letterspacing */
 }
 
@@ -142,7 +143,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 .card {
   display: block;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   padding: 2.25rem 1.75rem;
   text-decoration: none;
   color: var(--ink);
@@ -200,8 +201,8 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   background:
     repeating-linear-gradient(
       -45deg,
-      #EAE9E2 0px, #EAE9E2 18px,
-      #F0EFE8 18px, #F0EFE8 36px
+      rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 18px,
+      rgba(255, 255, 255, 0.02) 18px, rgba(255, 255, 255, 0.02) 36px
     );
   border: 1px solid var(--line);
   display: flex;
@@ -228,7 +229,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(244, 243, 239, 0.97);
+  background: rgba(11, 30, 35, 0.97);
 }
 
 .lightbox.open { display: flex; }
@@ -248,7 +249,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   border: 1px solid var(--line);
   background: #fff;
   padding: 8px;
-  box-shadow: 0 12px 40px rgba(30, 42, 58, 0.18);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
 .lightbox button {

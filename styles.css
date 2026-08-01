@@ -128,6 +128,21 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .hero .wordmark { font-size: clamp(2.4rem, 8vw, 6rem); }
 
+.hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(2rem, 6vw, 5rem);
+  flex-wrap: wrap;
+}
+
+.headshot {
+  flex: 0 0 auto;
+  width: min(300px, 70vw);
+  aspect-ratio: 4 / 5;
+  margin-bottom: 0;
+}
+
 .hero p.tagline {
   margin-top: 2rem;
   max-width: 34rem;

@@ -30,6 +30,10 @@ body {
 /* ---------- header / nav ---------- */
 
 header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--paper);
   display: flex;
   align-items: baseline;
   justify-content: space-between;

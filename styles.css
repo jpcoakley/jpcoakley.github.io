@@ -180,6 +180,55 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .lotshots-mark .line { display: block; }
 
+/* ---------- series tiles (photography index) ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+.tile {
+  display: block;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.tile:hover { border-color: var(--blue); transform: translateY(-2px); }
+
+.tile img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  border-bottom: 1px solid var(--line);
+}
+
+.tile-name {
+  display: block;
+  padding: 1.1rem 1.25rem 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.tile-count {
+  display: block;
+  padding: 0 1.25rem 1.1rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.crumb { color: var(--muted); text-decoration: none; letter-spacing: 0.22em; }
+.crumb:hover { color: var(--red); }
+
 .series-title {
   text-align: center;
   font-size: clamp(1.4rem, 3.5vw, 2.2rem);

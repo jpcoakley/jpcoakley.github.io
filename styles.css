@@ -199,6 +199,103 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
 
 .lotshots-mark .line { display: block; }
 
+/* ---------- series bubbles (photography index) ---------- */
+
+.bubblespace {
+  position: relative;
+  height: clamp(440px, 72vh, 760px);
+  margin-top: 2rem;
+}
+
+/* pre-JS / no-JS fallback: calm inline layout */
+.bubble {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+  margin: 1.5rem;
+  transition: filter 200ms ease;
+}
+
+.bubblespace.ready .bubble {
+  position: absolute;
+  margin: 0;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.orb {
+  display: block;
+  margin: 0 auto;
+  position: relative;
+  width: var(--d, 180px);
+  height: var(--d, 180px);
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(233, 230, 220, 0.35); /* bright rim defines edges on overlap */
+  background: radial-gradient(circle at 50% 62%,
+    rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 70%);
+  box-shadow:
+    inset 0 -18px 40px rgba(0, 0, 0, 0.35),
+    inset 0 0 24px rgba(143, 176, 217, 0.18),  /* soft blue inner glow */
+    0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.orb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+  opacity: 0.74;                 /* translucent: overlapping bubbles show through */
+}
+
+/* moving specular reflection — --gx/--gy driven by mouse or device tilt */
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at var(--gx, 30%) var(--gy, 24%),
+      rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.10) 26%,
+      transparent 44%),
+    radial-gradient(circle at calc(100% - var(--gx, 30%)) calc(100% - var(--gy, 24%)),
+      rgba(143, 176, 217, 0.16), transparent 40%);
+  pointer-events: none;
+}
+
+.bubble:hover .orb {
+  box-shadow:
+    inset 0 -18px 40px rgba(0, 0, 0, 0.45),
+    0 18px 50px rgba(0, 0, 0, 0.35),
+    0 0 0 2px var(--blue);
+}
+
+.bubble-label {
+  display: block;
+  margin-top: 0.8rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.bubble-count {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 640px) {
+  .bubblespace.ready { height: auto; text-align: center; }
+  .bubblespace.ready .bubble { position: static; display: inline-block; margin: 1.5rem; transform: none !important; filter: none !important; }
+}
+
 /* ---------- series tiles (photography index) ---------- */
 
 .tiles {

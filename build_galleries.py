@@ -57,7 +57,7 @@ SERIES_PAGE = """<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=11">
 <script src="gallery.js?v=2" defer></script>
 </head>
 <body>
@@ -193,11 +193,13 @@ def main() -> None:
         cover = next((p for p in all_items if "cover" in Path(p).stem.lower()),
                      all_items[0])
         count = len(all_items)
+        diameter = max(150, min(260, 130 + count * 2))  # bigger series, bigger bubble
         tiles.append(
-            f'    <a class="tile" href="{fname}">\n'
-            f'      <img src="{cover}" alt="" loading="lazy">\n'
-            f'      <span class="tile-name">{html.escape(sname)}</span>\n'
-            f'      <span class="tile-count">{count} photo'
+            f'    <a class="bubble" href="{fname}">\n'
+            f'      <span class="orb" style="--d:{diameter}px">'
+            f'<img src="{cover}" alt="" loading="lazy"></span>\n'
+            f'      <span class="bubble-label">{html.escape(sname)}</span>\n'
+            f'      <span class="bubble-count">{count} photo'
             f'{"s" if count != 1 else ""}</span>\n'
             f'    </a>'
         )
@@ -225,7 +227,7 @@ def main() -> None:
             print(f"  removed {old_page.name}")
 
     if tiles:
-        out = '  <div class="tiles">\n' + "\n".join(tiles) + "\n  </div>"
+        out = '  <div class="bubblespace">\n' + "\n".join(tiles) + "\n  </div>"
         print(f"built {len(tiles)} series page(s), {total} photo(s)")
     else:
         out = f'  <div class="tiles">\n{PLACEHOLDER_TILES}\n  </div>'

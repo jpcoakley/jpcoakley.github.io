@@ -199,8 +199,6 @@ def main() -> None:
             f'      <span class="orb" style="--d:{diameter}px">'
             f'<img src="{cover}" alt="" loading="lazy"></span>\n'
             f'      <span class="bubble-label">{html.escape(sname)}</span>\n'
-            f'      <span class="bubble-count">{count} photo'
-            f'{"s" if count != 1 else ""}</span>\n'
             f'    </a>'
         )
 

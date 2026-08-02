@@ -222,7 +222,14 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   left: 0;
   top: 0;
   will-change: transform;
+  cursor: grab;
+  touch-action: none;        /* pointer dragging on touch screens */
+  user-select: none;
+  -webkit-user-select: none;
 }
+
+.bubblespace.ready .bubble.grabbed { cursor: grabbing; }
+.bubblespace.ready .bubble img { -webkit-user-drag: none; }
 
 .orb {
   display: block;
@@ -291,7 +298,7 @@ main { padding: 0 clamp(1.25rem, 5vw, 4rem) 6rem; }
   color: var(--muted);
 }
 
-@media (prefers-reduced-motion: reduce), (max-width: 640px) {
+@media (prefers-reduced-motion: reduce) {
   .bubblespace.ready { height: auto; text-align: center; }
   .bubblespace.ready .bubble { position: static; display: inline-block; margin: 1.5rem; transform: none !important; filter: none !important; }
 }

@@ -42,6 +42,12 @@ OVERRIDES = {
     "catherine-coakley": ("Hank Coakley", 3),  # daughter of Hank & Cindy
 }
 
+# people with no row in the contact sheet
+EXTRA_PEOPLE = [
+    {"name": "James F. Coakley", "branch": "James Coakley", "gen": 2,
+     "note": "JP's dad"},
+]
+
 # tile photos: Lightroom publishes into photos/lot-shots/Family Tree/;
 # ~/.config/familytree/photomap.csv maps "IMG_xxxx.jpg,Person Name" and the
 # matched photos are embedded (256px, base64) in the encrypted payload.
@@ -102,6 +108,17 @@ def main():
 
     def addr_key(p):
         return re.sub(r"[^a-z0-9]", "", p["road"].lower())[:14]
+
+    for extra in EXTRA_PEOPLE:
+        pid = slug(extra["name"])
+        if pid not in people:
+            people[pid] = {
+                "id": pid, "name": extra["name"], "gen": extra["gen"],
+                "branch": extra["branch"], "covered": "", "salutation": "",
+                "address": "", "road": "", "email": "", "phone": "",
+                "birthday": "",
+            }
+            order.append(pid)
 
     for pid, (br, gen) in OVERRIDES.items():
         if pid in people:

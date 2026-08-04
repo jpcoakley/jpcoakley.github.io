@@ -205,8 +205,12 @@ def main() -> None:
         )
 
     # drop web copies whose originals were unpublished
+    # (assets/about and assets/family are hand-managed, never pruned)
+    PROTECTED = {"about", "family"}
     if ASSETS.is_dir():
         for old in ASSETS.rglob("*.jpg"):
+            if old.relative_to(ASSETS).parts[0] in PROTECTED:
+                continue
             if old not in kept:
                 old.unlink()
                 print(f"  removed {old.relative_to(ROOT)}")

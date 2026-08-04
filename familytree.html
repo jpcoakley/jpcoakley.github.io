@@ -239,10 +239,16 @@
 
 <script>
 (function () {
-  // WebCrypto needs a secure context; until jpcoakley.com has HTTPS,
-  // bounce http visitors to the github.io mirror of this same site.
-  if (location.protocol === "http:" && location.hostname.indexOf("localhost") === -1) {
-    location.replace("https://jpcoakley.github.io/familytree");
+  // WebCrypto (decryption) only exists on secure pages. Until jpcoakley.com
+  // serves HTTPS, explain rather than fail with a wrong-password error.
+  if (!(window.crypto && crypto.subtle)) {
+    document.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("gate").innerHTML =
+        '<p class="kicker">Descendants of John Aloysius Coakley</p>' +
+        '<p class="lede" style="text-align:center">The family tree needs a secure ' +
+        "(https) connection, which this site doesn't have quite yet. Check back " +
+        "soon — it's being worked on.</p>";
+    });
     return;
   }
   var DATA_URL = "assets/familytree.enc";

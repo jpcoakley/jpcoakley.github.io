@@ -47,10 +47,11 @@
   .pwwrap { position: relative; display: inline-block; }
   .pwwrap input { padding-right: 2.6rem; }
   #pweye {
-    position: absolute; right: 0.6rem; top: 50%;
+    position: absolute; right: 0.5rem; top: 50%;
     transform: translateY(-50%);
     background: none; border: none; cursor: pointer;
-    color: var(--muted); font-size: 1rem; padding: 0.2rem;
+    color: var(--muted); padding: 0.2rem;
+    display: flex; align-items: center;
   }
   #pweye.on { color: var(--blue); }
 
@@ -180,8 +181,18 @@
     <p class="kicker">Descendants of John Aloysius Coakley</p>
     <p class="lede" style="text-align:center">This page is for family. Enter the family password to view.</p>
     <span class="pwwrap">
-      <input type="password" id="pw" placeholder="password" autocomplete="current-password">
-      <button type="button" id="pweye" aria-label="Show password">&#128065;</button>
+      <input type="password" id="pw" placeholder="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button type="button" id="pweye" aria-label="Show password">
+        <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/>
+          <circle cx="12" cy="12" r="2.8"/>
+        </svg>
+        <svg id="eye-shut" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/>
+          <circle cx="12" cy="12" r="2.8"/>
+          <line x1="4" y1="20" x2="20" y2="4"/>
+        </svg>
+      </button>
     </span>
     <button id="unlock">Unlock</button>
     <p class="err" id="err"></p>
@@ -233,6 +244,8 @@
     var show = pw.type === "password";
     pw.type = show ? "text" : "password";
     this.classList.toggle("on", show);
+    document.getElementById("eye-open").style.display = show ? "none" : "";
+    document.getElementById("eye-shut").style.display = show ? "" : "none";
     pw.focus();
   });
 
@@ -246,7 +259,7 @@
     err.textContent = "";
     try {
       var b64 = await (await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })).text();
-      data = await decrypt(b64.trim(), document.getElementById("pw").value);
+      data = await decrypt(b64.trim(), document.getElementById("pw").value.trim().toLowerCase());
     } catch (e) {
       err.textContent = "That's not it — try again.";
       return;

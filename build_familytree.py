@@ -45,7 +45,8 @@ OVERRIDES = {
 # 4th-gen kids the covered-with heuristic can't place: slug -> household id
 # (household id = "hh-" + slug of its first-listed member)
 KID_OVERRIDES = {
-    "millie-currie": "hh-j-nick-currie",   # Camille in the household list
+    "millie-currie": "hh-j-nick-currie",     # Camille in the household list
+    "alexandra-clemens": "hh-matt-clemens",  # "Alex" in the household list
 }
 
 # people with no row in the contact sheet

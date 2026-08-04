@@ -200,28 +200,89 @@ def main():
                 "label": p["branch"] or "Unplaced", "couple": [],
                 "households": [], "unplaced": []})["unplaced"].append(pid)
 
-    # embed mapped photos as base64 thumbnails
-    photos = {}
-    if PHOTO_MAP.exists() and PHOTO_DIR.is_dir():
-        import base64
-        import tempfile
+    # embed photos as base64 thumbnails.
+    # Primary source: filenames like "IMG_1234 Person Name.jpg" (Lightroom
+    # export rename). photomap.csv (filename,name-or-slug) overrides, e.g.
+    # to disambiguate two people with the same name. Plain IMG_1234.jpg
+    # files (no name) are ignored.
+    import base64
+    import tempfile
+
+    def norm(s):
+        return re.sub(r"\s+", " ", s.replace("’", "'").lower()).strip()
+
+    def tokens(s):
+        return [t for t in re.split(r"[^a-z']+", norm(s)) if len(t) > 1]
+
+    by_name = {}
+    for p in people.values():
+        by_name.setdefault(norm(p["name"]), []).append(p["id"])
+
+    def candidates(photo_name):
+        exact = by_name.get(norm(photo_name), [])
+        if exact:
+            return exact
+        # widening tiers; take the first tier that produces any hits
+        want = tokens(photo_name)
+
+        def tier(fields):
+            hits = []
+            for p in people.values():
+                pool = []
+                for f in fields:
+                    pool += tokens(p.get(f, ""))
+                if all(any(t == w or (len(w) >= 3 and t.startswith(w)) or
+                           (len(t) >= 3 and w.startswith(t))
+                           for t in pool) for w in want):
+                    hits.append(p["id"])
+            return hits
+
+        for fields in (["name"], ["name", "salutation"],
+                       ["name", "salutation", "covered"]):
+            hits = tier(fields)
+            if hits:
+                return hits
+        return []
+
+    assignments = {}   # pid -> source file
+    if PHOTO_DIR.is_dir():
+        for src in sorted(PHOTO_DIR.glob("*.jpg")):
+            m = re.match(r"^IMG_\d+\s+(.+)$", src.stem)
+            if not m:
+                continue
+            pids = candidates(m.group(1))
+            if len(pids) == 1:
+                if pids[0] in assignments:
+                    print(f"  note: multiple photos for {m.group(1)}; "
+                          f"using {src.name}")
+                assignments[pids[0]] = src
+            elif len(pids) > 1:
+                print(f"  AMBIGUOUS, skipped: {src.name} "
+                      f"(matches {', '.join(pids)})")
+            else:
+                print(f"  no person match, skipped: {src.name}")
+    if PHOTO_MAP.exists():
         for line in PHOTO_MAP.read_text().splitlines():
             if "," not in line:
                 continue
-            fname, pname = [x.strip() for x in line.split(",", 1)]
-            pid = slug(pname)
+            fname, target = [x.strip() for x in line.rsplit(",", 1)]
+            pid = target if target in people else slug(target)
             src = PHOTO_DIR / fname
-            if pid not in people or not src.exists():
-                print(f"  photomap skip: {fname} -> {pname}")
-                continue
-            with tempfile.NamedTemporaryFile(suffix=".jpg") as tf:
-                subprocess.run(
-                    ["sips", "-Z", "256", "-s", "format", "jpeg",
-                     "-s", "formatOptions", "70", str(src), "--out", tf.name],
-                    check=True, capture_output=True)
-                photos[pid] = ("data:image/jpeg;base64," +
-                               base64.b64encode(Path(tf.name).read_bytes()).decode())
-        print(f"  embedded {len(photos)} photo(s)")
+            if pid in people and src.exists():
+                assignments[pid] = src
+            else:
+                print(f"  photomap skip: {fname} -> {target}")
+
+    photos = {}
+    for pid, src in assignments.items():
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as tf:
+            subprocess.run(
+                ["sips", "-Z", "256", "-s", "format", "jpeg",
+                 "-s", "formatOptions", "70", str(src), "--out", tf.name],
+                check=True, capture_output=True)
+            photos[pid] = ("data:image/jpeg;base64," +
+                           base64.b64encode(Path(tf.name).read_bytes()).decode())
+    print(f"  embedded {len(photos)} photo(s)")
 
     data = {
         "root": {"name": "John Aloysius Coakley", "nickname": "Jack"},

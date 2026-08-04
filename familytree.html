@@ -461,6 +461,7 @@
   function unitEl(u) {
     var box = el("div", "unit" + (u.kids.length ? " expandable" : "") +
                         (expanded[u.id] ? " open" : ""));
+    box.dataset.uid = u.id;
     u.tiles.forEach(function (pid) { box.appendChild(personTile(pid)); });
     if (u.kids.length) {
       var n = u.kids.reduce(function (s, kid) {
@@ -468,11 +469,8 @@
       }, 0);
       box.appendChild(el("span", "expander",
         expanded[u.id] ? "− collapse" : "+ " + n));
-      box.addEventListener("click", function (e) {
-        if (e.target.closest("a, .pmenu, .pmenu-btn")) return;
-        expanded[u.id] = !expanded[u.id];
-        render();
-      });
+      // expand/collapse fires from the viewport's tap detection (pointer
+      // capture would swallow a click handler here)
     }
     return box;
   }
@@ -554,11 +552,14 @@
   document.getElementById("zfit").addEventListener("click", fit);
 
   var pointers = new Map(), lastDist = 0, panning = null;
+  var downTarget = null, movedTotal = 0;
   viewport.addEventListener("pointerdown", function (e) {
     if (e.target.closest(".pmenu, .pmenu-btn, .zoombar, a")) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       panning = { x: e.clientX, y: e.clientY };
+      downTarget = e.target;
+      movedTotal = 0;
       viewport.classList.add("grabbing");
       viewport.setPointerCapture(e.pointerId);
     }
@@ -576,6 +577,8 @@
       }
       lastDist = d;
     } else if (panning) {
+      movedTotal += Math.abs(e.clientX - panning.x) +
+                    Math.abs(e.clientY - panning.y);
       tx += e.clientX - panning.x;
       ty += e.clientY - panning.y;
       panning = { x: e.clientX, y: e.clientY };
@@ -585,7 +588,20 @@
   function endPointer(e) {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) lastDist = 0;
-    if (pointers.size === 0) { panning = null; viewport.classList.remove("grabbing"); }
+    if (pointers.size === 0) {
+      // pointer capture routes clicks to the viewport, so expand taps
+      // are detected here: a press that barely moved on an expandable unit
+      if (e.type === "pointerup" && movedTotal < 8 && downTarget) {
+        var unit = downTarget.closest(".unit.expandable");
+        if (unit && !downTarget.closest("a, .pmenu, .pmenu-btn")) {
+          expanded[unit.dataset.uid] = !expanded[unit.dataset.uid];
+          render();
+        }
+      }
+      panning = null;
+      downTarget = null;
+      viewport.classList.remove("grabbing");
+    }
   }
   viewport.addEventListener("pointerup", endPointer);
   viewport.addEventListener("pointercancel", endPointer);

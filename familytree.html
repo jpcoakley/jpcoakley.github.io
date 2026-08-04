@@ -341,7 +341,8 @@
     if (p.birthday) bits.push(p.birthday);
     if (p.phone) bits.push(p.phone);
     if (p.email) bits.push('<a href="mailto:' + p.email + '">' + p.email + "</a>");
-    if (p.address) bits.push(p.address);
+    if (p.addr1) bits.push(p.addr1);
+    if (p.addr2) bits.push(p.addr2);
     t.appendChild(el("div", "pinfo", bits.join("<br>")));
 
     var mb = el("button", "pmenu-btn", "⋯");

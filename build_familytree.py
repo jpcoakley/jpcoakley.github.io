@@ -104,9 +104,10 @@ def main():
             "branch": BRANCH_ALIAS.get(branch, branch) if branch else "",
             "covered": r["Covered With This Email"],
             "salutation": r["Salutation"],
-            "address": ", ".join(x for x in (r["Road"], r["City"],
-                                             f'{r["State"]} {r["Zip"]}'.strip())
-                                 if x).strip(", "),
+            "addr1": r["Road"],
+            "addr2": ", ".join(x for x in (r["City"],
+                                           f'{r["State"]} {r["Zip"]}'.strip())
+                               if x).strip(", "),
             "road": r["Road"],
             "email": r["Email"], "phone": r["Cell Phone"],
             "birthday": r["Birthday"],
@@ -326,8 +327,8 @@ def main():
                      branches[b]["couple"] or branches[b]["households"] or
                      branches[b]["unplaced"]],
         "people": {pid: {k: v for k, v in p.items()
-                         if k in ("id", "name", "gen", "address", "email",
-                                  "phone", "birthday")}
+                         if k in ("id", "name", "gen", "addr1", "addr2",
+                                  "email", "phone", "birthday")}
                    for pid, p in people.items()},
     }
 

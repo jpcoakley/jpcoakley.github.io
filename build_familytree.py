@@ -286,6 +286,9 @@ def main():
             pid = target if target in people else slug(target)
             src = PHOTO_DIR / fname
             if pid in people and src.exists():
+                for k, v in list(assignments.items()):
+                    if v == src and k != pid:   # override wins outright
+                        del assignments[k]
                 assignments[pid] = src
             else:
                 print(f"  photomap skip: {fname} -> {target}")

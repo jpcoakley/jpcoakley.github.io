@@ -44,6 +44,15 @@
   }
   .gate button:hover, .zoombar button:hover { border-color: var(--red); color: var(--red); }
   .gate .err { color: var(--red); font-size: 0.8rem; letter-spacing: 0.1em; min-height: 1.2em; }
+  .pwwrap { position: relative; display: inline-block; }
+  .pwwrap input { padding-right: 2.6rem; }
+  #pweye {
+    position: absolute; right: 0.6rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 1rem; padding: 0.2rem;
+  }
+  #pweye.on { color: var(--blue); }
 
   /* ---------- viewport / canvas ---------- */
   .treeview {
@@ -170,7 +179,10 @@
   <section class="gate" id="gate">
     <p class="kicker">Descendants of John Aloysius Coakley</p>
     <p class="lede" style="text-align:center">This page is for family. Enter the family password to view.</p>
-    <input type="password" id="pw" placeholder="password" autocomplete="current-password">
+    <span class="pwwrap">
+      <input type="password" id="pw" placeholder="password" autocomplete="current-password">
+      <button type="button" id="pweye" aria-label="Show password">&#128065;</button>
+    </span>
     <button id="unlock">Unlock</button>
     <p class="err" id="err"></p>
   </section>
@@ -216,6 +228,14 @@
     return JSON.parse(new TextDecoder().decode(pt));
   }
 
+  document.getElementById("pweye").addEventListener("click", function () {
+    var pw = document.getElementById("pw");
+    var show = pw.type === "password";
+    pw.type = show ? "text" : "password";
+    this.classList.toggle("on", show);
+    pw.focus();
+  });
+
   document.getElementById("unlock").addEventListener("click", unlock);
   document.getElementById("pw").addEventListener("keydown", function (e) {
     if (e.key === "Enter") unlock();
@@ -225,7 +245,7 @@
     var err = document.getElementById("err");
     err.textContent = "";
     try {
-      var b64 = await (await fetch(DATA_URL)).text();
+      var b64 = await (await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })).text();
       data = await decrypt(b64.trim(), document.getElementById("pw").value);
     } catch (e) {
       err.textContent = "That's not it — try again.";
@@ -260,6 +280,11 @@
     var saved = localStorage.getItem("ftphoto:" + pid);
     if (saved === "hidden") { /* keep initials */ }
     else if (saved) { img.src = saved; img.style.display = "block"; pic.querySelector("span").style.display = "none"; }
+    else if (data.photos && data.photos[pid]) {
+      img.src = data.photos[pid];
+      img.style.display = "block";
+      pic.querySelector("span").style.display = "none";
+    }
     else {
       img.src = "assets/family/" + pid + ".jpg";
       img.onload = function () { img.style.display = "block"; pic.querySelector("span").style.display = "none"; };

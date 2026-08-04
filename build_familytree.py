@@ -37,6 +37,17 @@ BRANCH_ORDER = ["Caren Dalton", "Jan McCulloch", "Denise Hickey",
                 "Hank Coakley", "Lisa Coakley", "Dosie Rymond",
                 "James Coakley"]
 
+# manual lineage fixes for people the sheet doesn't place: slug -> (branch, gen)
+OVERRIDES = {
+    "catherine-coakley": ("Hank Coakley", 3),  # daughter of Hank & Cindy
+}
+
+# tile photos: Lightroom publishes into photos/lot-shots/Family Tree/;
+# ~/.config/familytree/photomap.csv maps "IMG_xxxx.jpg,Person Name" and the
+# matched photos are embedded (256px, base64) in the encrypted payload.
+PHOTO_DIR = ROOT / "photos" / "lot-shots" / "Family Tree"
+PHOTO_MAP = Path.home() / ".config" / "familytree" / "photomap.csv"
+
 
 def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
@@ -91,6 +102,11 @@ def main():
 
     def addr_key(p):
         return re.sub(r"[^a-z0-9]", "", p["road"].lower())[:14]
+
+    for pid, (br, gen) in OVERRIDES.items():
+        if pid in people:
+            people[pid]["branch"] = br
+            people[pid]["gen"] = gen
 
     # resolve blank-branch rows by address / salutation match
     for p in people.values():
@@ -184,8 +200,32 @@ def main():
                 "label": p["branch"] or "Unplaced", "couple": [],
                 "households": [], "unplaced": []})["unplaced"].append(pid)
 
+    # embed mapped photos as base64 thumbnails
+    photos = {}
+    if PHOTO_MAP.exists() and PHOTO_DIR.is_dir():
+        import base64
+        import tempfile
+        for line in PHOTO_MAP.read_text().splitlines():
+            if "," not in line:
+                continue
+            fname, pname = [x.strip() for x in line.split(",", 1)]
+            pid = slug(pname)
+            src = PHOTO_DIR / fname
+            if pid not in people or not src.exists():
+                print(f"  photomap skip: {fname} -> {pname}")
+                continue
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as tf:
+                subprocess.run(
+                    ["sips", "-Z", "256", "-s", "format", "jpeg",
+                     "-s", "formatOptions", "70", str(src), "--out", tf.name],
+                    check=True, capture_output=True)
+                photos[pid] = ("data:image/jpeg;base64," +
+                               base64.b64encode(Path(tf.name).read_bytes()).decode())
+        print(f"  embedded {len(photos)} photo(s)")
+
     data = {
         "root": {"name": "John Aloysius Coakley", "nickname": "Jack"},
+        "photos": photos,
         "branches": [branches[b] for b in branches if
                      branches[b]["couple"] or branches[b]["households"] or
                      branches[b]["unplaced"]],

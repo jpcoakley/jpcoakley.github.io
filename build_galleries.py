@@ -114,6 +114,8 @@ def gather_series():
         return []
     lotshots, others = [], []
     for d in sorted((p for p in PHOTOS.iterdir() if p.is_dir()), reverse=True):
+        if d.name == "Family Tree":   # feeds the family tree page, never public
+            continue
         files = photo_files(d)
         if not files:
             continue

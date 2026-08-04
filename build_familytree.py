@@ -42,6 +42,12 @@ OVERRIDES = {
     "catherine-coakley": ("Hank Coakley", 3),  # daughter of Hank & Cindy
 }
 
+# 4th-gen kids the covered-with heuristic can't place: slug -> household id
+# (household id = "hh-" + slug of its first-listed member)
+KID_OVERRIDES = {
+    "millie-currie": "hh-j-nick-currie",   # Camille in the household list
+}
+
 # people with no row in the contact sheet
 EXTRA_PEOPLE = [
     {"name": "James F. Coakley", "branch": "James Coakley", "gen": 2,
@@ -193,6 +199,14 @@ def main():
             continue
         first = p["name"].split()[0].lower()
         placed = False
+        if pid in KID_OVERRIDES:
+            for hh in hh_by_key.values():
+                if hh["id"] == KID_OVERRIDES[pid]:
+                    hh["kids"].append(pid)
+                    placed = True
+                    break
+        if placed:
+            continue
         for (br, _), hh in hh_by_key.items():
             if br != p["branch"]:
                 continue
@@ -326,9 +340,11 @@ def main():
     ).stdout.decode().strip()
     OUT.write_text(enc)
     n_hh = sum(len(b["households"]) for b in data["branches"])
-    n_un = sum(len(b["unplaced"]) for b in data["branches"])
+    unplaced_names = [people[pid]["name"] for b in data["branches"]
+                      for pid in b["unplaced"]]
     print(f"{len(people)} people, {len(data['branches'])} branches, "
-          f"{n_hh} households, {n_un} unplaced -> {OUT.name}")
+          f"{n_hh} households, unplaced: "
+          f"{', '.join(unplaced_names) or 'none'} -> {OUT.name}")
 
 
 if __name__ == "__main__":

@@ -86,33 +86,53 @@
   }
   .zoombar button { padding: 0.45rem 0.9rem; background: var(--paper); }
 
-  /* ---------- tree structure ---------- */
-  .rootnode { text-align: center; margin-bottom: 2.5rem; }
-  .branches { display: flex; align-items: flex-start; gap: 2rem; flex-wrap: wrap; width: 3400px; }
-  .branch {
+  /* ---------- generational rows ---------- */
+  .genrow {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.4rem;
+    margin-bottom: 2.6rem;
+  }
+  .genrow-label {
+    flex: 0 0 auto;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted);
+    align-self: stretch;
+    text-align: center;
+  }
+  .gengroup {
     border: 1px solid var(--line);
     background: rgba(255,255,255,0.02);
-    padding: 1.2rem;
-    vertical-align: top;
-  }
-  .branch-title {
-    font-size: 0.8rem; font-weight: 600;
-    letter-spacing: 0.24em; text-transform: uppercase;
-    color: var(--blue);
-    margin-bottom: 1rem; text-align: center;
-  }
-  .couple-row, .kids-row { display: flex; gap: 0.8rem; align-items: flex-start; }
-  .households { display: flex; flex-direction: column; gap: 1.1rem; margin-top: 1.1rem; }
-  .household {
-    border: 1px solid var(--line);
-    background: rgba(255,255,255,0.025);
     padding: 0.9rem;
+    flex: 0 0 auto;
   }
-  .household .kids-row { margin-top: 0.8rem; padding-left: 1.2rem; }
-  .unplaced-note {
-    margin-top: 0.9rem; font-size: 0.6rem; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--muted);
+  .gengroup > .kicker { margin-bottom: 0.6rem; font-size: 0.58rem; }
+  .unit-row { display: flex; gap: 1rem; align-items: flex-start; }
+  .unit {
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    padding: 0.5rem 0.5rem 1.4rem;
+    border: 1px solid transparent;
+    flex: 0 0 auto;
   }
+  .unit.expandable { border-color: var(--line); cursor: pointer; }
+  .unit.expandable:hover { border-color: var(--blue); }
+  .unit.open { border-color: var(--blue); background: rgba(143,176,217,0.05); }
+  .expander {
+    position: absolute;
+    bottom: 0.25rem; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--blue);
+    white-space: nowrap;
+  }
+  .unit.open .expander { color: var(--red); }
 
   /* ---------- person tile ---------- */
   .person {
@@ -179,7 +199,6 @@
 
   <section class="gate" id="gate">
     <p class="kicker">Descendants of John Aloysius Coakley</p>
-    <p class="lede" style="text-align:center">This page is for family. Enter the family password to view.</p>
     <span class="pwwrap">
       <input type="password" id="pw" placeholder="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button type="button" id="pweye" aria-label="Show password">
@@ -220,6 +239,12 @@
 
 <script>
 (function () {
+  // WebCrypto needs a secure context; until jpcoakley.com has HTTPS,
+  // bounce http visitors to the github.io mirror of this same site.
+  if (location.protocol === "http:" && location.hostname.indexOf("localhost") === -1) {
+    location.replace("https://jpcoakley.github.io/familytree");
+    return;
+  }
   var DATA_URL = "assets/familytree.enc";
   var data = null;
 
@@ -266,6 +291,8 @@
     }
     document.getElementById("gate").style.display = "none";
     document.getElementById("treewrap").style.display = "block";
+    buildUnits();
+    expanded.root = true;   // Jack starts open: his 9 kids' couples showing
     render();
     fit();
   }
@@ -354,44 +381,107 @@
     document.querySelectorAll(".pmenu.open").forEach(function (m) { m.classList.remove("open"); });
   });
 
+  /* ---------- unit model: expandable couples per generation ---------- */
+  var units = {}, expanded = {};
+
+  function firstName(pid) {
+    var p = data.people[pid];
+    return p ? p.name.split(/\s+/)[0] : "";
+  }
+
+  function buildUnits() {
+    data.people["jack-root"] = { id: "jack-root", name: data.root.name +
+      (data.root.nickname ? " “" + data.root.nickname + "”" : "") };
+    var rootKids = [];
+    data.branches.forEach(function (b) {
+      var bid = "b:" + b.label;
+      // blood member (name closest to branch label) leads the couple
+      var couple = b.couple.slice().sort(function (x, y) {
+        function score(pid) {
+          var n = (data.people[pid] || {}).name || "";
+          return b.label.split(/\s+/).filter(function (t) {
+            return n.indexOf(t) !== -1;
+          }).length;
+        }
+        return score(y) - score(x);
+      });
+      var kids = [];
+      b.households.forEach(function (hh) {
+        units[hh.id] = { id: hh.id, tiles: hh.members,
+                         kids: hh.kids.map(leafUnit) };
+      kids.push(hh.id);
+      });
+      (b.unplaced || []).forEach(function (pid) { kids.push(leafUnit(pid)); });
+      units[bid] = { id: bid, tiles: couple, kids: kids, label: b.label };
+      rootKids.push(bid);
+    });
+    units.root = { id: "root", tiles: ["jack-root"], kids: rootKids };
+  }
+
+  function leafUnit(pid) {
+    var id = "p:" + pid;
+    units[id] = { id: id, tiles: [pid], kids: [] };
+    return id;
+  }
+
+  function unitName(u) {
+    return u.label || firstName(u.tiles[0]) +
+      (u.tiles[1] ? " & " + firstName(u.tiles[1]) : "");
+  }
+
+  function unitEl(u) {
+    var box = el("div", "unit" + (u.kids.length ? " expandable" : "") +
+                        (expanded[u.id] ? " open" : ""));
+    u.tiles.forEach(function (pid) { box.appendChild(personTile(pid)); });
+    if (u.kids.length) {
+      var n = u.kids.reduce(function (s, kid) {
+        return s + units[kid].tiles.length;
+      }, 0);
+      box.appendChild(el("span", "expander",
+        expanded[u.id] ? "− collapse" : "+ " + n));
+      box.addEventListener("click", function (e) {
+        if (e.target.closest("a, .pmenu, .pmenu-btn")) return;
+        expanded[u.id] = !expanded[u.id];
+        render();
+      });
+    }
+    return box;
+  }
+
+  var GEN_LABELS = ["", "1st generation", "2nd generation",
+                    "3rd generation", "4th generation"];
+
   function render() {
     var canvas = document.getElementById("canvas");
     canvas.innerHTML = "";
-    var root = el("div", "rootnode");
-    root.appendChild(el("h2", "series-title wordmark",
-      data.root.name + (data.root.nickname ? " · “" + data.root.nickname + "”" : "")));
-    canvas.appendChild(root);
-
-    var row = el("div", "branches");
-    data.branches.forEach(function (b) {
-      var bx = el("div", "branch");
-      bx.appendChild(el("div", "branch-title", b.label));
-      var couple = el("div", "couple-row");
-      b.couple.forEach(function (pid) { couple.appendChild(personTile(pid)); });
-      if (b.couple.length) bx.appendChild(couple);
-      var hhs = el("div", "households");
-      b.households.forEach(function (hh) {
-        var hx = el("div", "household");
-        var mr = el("div", "couple-row");
-        hh.members.forEach(function (pid) { mr.appendChild(personTile(pid)); });
-        hx.appendChild(mr);
-        if (hh.kids.length) {
-          var kr = el("div", "kids-row");
-          hh.kids.forEach(function (pid) { kr.appendChild(personTile(pid)); });
-          hx.appendChild(kr);
-        }
-        hhs.appendChild(hx);
+    // row of groups; each group = the revealed family of one expanded unit
+    var rows = [[{ label: null, units: ["root"] }]];
+    for (var depth = 0; depth < 4; depth++) {
+      var next = [];
+      rows[depth].forEach(function (group) {
+        group.units.forEach(function (uid) {
+          var u = units[uid];
+          if (expanded[uid] && u.kids.length) {
+            next.push({ label: unitName(u), units: u.kids });
+          }
+        });
       });
-      bx.appendChild(hhs);
-      if (b.unplaced && b.unplaced.length) {
-        bx.appendChild(el("div", "unplaced-note", "Also in this branch:"));
-        var ur = el("div", "kids-row");
-        b.unplaced.forEach(function (pid) { ur.appendChild(personTile(pid)); });
-        bx.appendChild(ur);
-      }
-      row.appendChild(bx);
+      if (!next.length) break;
+      rows.push(next);
+    }
+    rows.forEach(function (groups, depth) {
+      var row = el("div", "genrow");
+      row.appendChild(el("div", "genrow-label", GEN_LABELS[depth + 1] || ""));
+      groups.forEach(function (group) {
+        var g = el("div", "gengroup");
+        if (group.label) g.appendChild(el("p", "kicker", group.label));
+        var ur = el("div", "unit-row");
+        group.units.forEach(function (uid) { ur.appendChild(unitEl(units[uid])); });
+        g.appendChild(ur);
+        row.appendChild(g);
+      });
+      canvas.appendChild(row);
     });
-    canvas.appendChild(row);
   }
 
   /* ---------- pan & zoom ---------- */

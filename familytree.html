@@ -218,7 +218,7 @@
   </section>
 
   <section id="treewrap" style="display:none">
-    <p class="kicker" style="margin-bottom:1rem">Drag to pan · scroll or pinch to zoom · ⋯ on a tile for photo options</p>
+    <p class="kicker" style="margin-bottom:1rem">Drag to pan · scroll or pinch to zoom · click a family to expand · <a class="crumb" href="#" id="lockbtn">lock</a></p>
     <div class="treeview" id="viewport">
       <div id="canvas"></div>
       <div class="zoombar">
@@ -285,23 +285,45 @@
     if (e.key === "Enter") unlock();
   });
 
-  async function unlock() {
-    var err = document.getElementById("err");
-    err.textContent = "";
+  async function tryUnlock(pass) {
     try {
       var b64 = await (await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })).text();
-      data = await decrypt(b64.trim(), document.getElementById("pw").value.trim().toLowerCase());
+      data = await decrypt(b64.trim(), pass);
     } catch (e) {
-      err.textContent = "That's not it — try again.";
-      return;
+      return false;
     }
+    try { localStorage.setItem("ftpass", pass); } catch (_) {}
     document.getElementById("gate").style.display = "none";
     document.getElementById("treewrap").style.display = "block";
     buildUnits();
     expanded.root = true;   // Jack starts open: his 9 kids' couples showing
     render();
     fit();
+    return true;
   }
+
+  async function unlock() {
+    var err = document.getElementById("err");
+    err.textContent = "";
+    var ok = await tryUnlock(
+      document.getElementById("pw").value.trim().toLowerCase());
+    if (!ok) err.textContent = "That's not it — try again.";
+  }
+
+  // remembered unlock: skip the gate on devices that have entered it before
+  var remembered = null;
+  try { remembered = localStorage.getItem("ftpass"); } catch (_) {}
+  if (remembered) {
+    tryUnlock(remembered).then(function (ok) {
+      if (!ok) { try { localStorage.removeItem("ftpass"); } catch (_) {} }
+    });
+  }
+
+  document.getElementById("lockbtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    try { localStorage.removeItem("ftpass"); } catch (_) {}
+    location.reload();
+  });
 
   /* ---------- render ---------- */
   function el(tag, cls, html) {

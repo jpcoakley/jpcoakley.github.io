@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Family Tree — JP Coakley</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=12">
+<style>
+  /* ---------- gate ---------- */
+  .gate {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    text-align: center;
+  }
+  .gate input {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font: inherit;
+    letter-spacing: 0.08em;
+    padding: 0.8rem 1.1rem;
+    width: min(320px, 80vw);
+    text-align: center;
+  }
+  .gate button, .zoombar button {
+    background: none;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.6rem;
+    cursor: pointer;
+  }
+  .gate button:hover, .zoombar button:hover { border-color: var(--red); color: var(--red); }
+  .gate .err { color: var(--red); font-size: 0.8rem; letter-spacing: 0.1em; min-height: 1.2em; }
+
+  /* ---------- viewport / canvas ---------- */
+  .treeview {
+    position: relative;
+    overflow: hidden;
+    height: calc(100vh - 220px);
+    min-height: 480px;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(143,176,217,0.06), transparent 60%);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .treeview.grabbing { cursor: grabbing; }
+  #canvas {
+    position: absolute;
+    left: 0; top: 0;
+    transform-origin: 0 0;
+    padding: 3rem;
+    display: inline-block;
+  }
+  .zoombar {
+    position: absolute;
+    right: 1rem; bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 5;
+  }
+  .zoombar button { padding: 0.45rem 0.9rem; background: var(--paper); }
+
+  /* ---------- tree structure ---------- */
+  .rootnode { text-align: center; margin-bottom: 2.5rem; }
+  .branches { display: flex; align-items: flex-start; gap: 2rem; flex-wrap: wrap; width: 3400px; }
+  .branch {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.02);
+    padding: 1.2rem;
+    vertical-align: top;
+  }
+  .branch-title {
+    font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 1rem; text-align: center;
+  }
+  .couple-row, .kids-row { display: flex; gap: 0.8rem; align-items: flex-start; }
+  .households { display: flex; flex-direction: column; gap: 1.1rem; margin-top: 1.1rem; }
+  .household {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.025);
+    padding: 0.9rem;
+  }
+  .household .kids-row { margin-top: 0.8rem; padding-left: 1.2rem; }
+  .unplaced-note {
+    margin-top: 0.9rem; font-size: 0.6rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ---------- person tile ---------- */
+  .person {
+    position: relative;
+    width: 168px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 0.7rem;
+    white-space: normal;
+    flex: 0 0 auto;
+  }
+  .person .pic {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 0.5rem;
+    background: rgba(143,176,217,0.14);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue);
+    font-weight: 600; letter-spacing: 0.1em; font-size: 1rem;
+  }
+  .person .pic img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .person .pname {
+    font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink); text-align: center;
+    margin-bottom: 0.35rem;
+  }
+  .person .pinfo { font-size: 0.62rem; line-height: 1.5; color: var(--muted); text-align: center; word-break: break-word; }
+  .person .pinfo a { color: var(--blue); text-decoration: none; }
+  .pmenu-btn {
+    position: absolute; top: 0.3rem; right: 0.45rem;
+    background: none; border: none; color: var(--muted);
+    font-size: 0.9rem; cursor: pointer; padding: 0.1rem 0.3rem;
+  }
+  .pmenu {
+    position: absolute; top: 1.6rem; right: 0.4rem; z-index: 6;
+    background: var(--paper); border: 1px solid var(--line);
+    display: none; flex-direction: column; min-width: 130px;
+  }
+  .pmenu.open { display: flex; }
+  .pmenu button {
+    background: none; border: none; color: var(--ink);
+    font: inherit; font-size: 0.62rem; letter-spacing: 0.14em;
+    text-transform: uppercase; padding: 0.55rem 0.8rem;
+    cursor: pointer; text-align: left;
+  }
+  .pmenu button:hover { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="site-name" href="index.html">JP&nbsp;Coakley</a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="photography.html">Photography</a>
+    <a href="about.html">About Me</a>
+  </nav>
+</header>
+
+<main>
+  <h1 class="page-title wordmark" style="margin-top:2rem">Family Tree</h1>
+
+  <section class="gate" id="gate">
+    <p class="kicker">Descendants of John Aloysius Coakley</p>
+    <p class="lede" style="text-align:center">This page is for family. Enter the family password to view.</p>
+    <input type="password" id="pw" placeholder="password" autocomplete="current-password">
+    <button id="unlock">Unlock</button>
+    <p class="err" id="err"></p>
+  </section>
+
+  <section id="treewrap" style="display:none">
+    <p class="kicker" style="margin-bottom:1rem">Drag to pan · scroll or pinch to zoom · ⋯ on a tile for photo options</p>
+    <div class="treeview" id="viewport">
+      <div id="canvas"></div>
+      <div class="zoombar">
+        <button id="zout" aria-label="Zoom out">−</button>
+        <button id="zfit">Fit</button>
+        <button id="zin" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>JP Coakley</span>
+  <a class="contact-link" href="mailto:jpcoakley@gmail.com">Contact</a>
+</footer>
+
+<input type="file" id="photopick" accept="image/*" style="display:none">
+
+<script>
+(function () {
+  var DATA_URL = "assets/familytree.enc";
+  var data = null;
+
+  /* ---------- decrypt (openssl enc -aes-256-cbc -pbkdf2 -iter 200000) ---------- */
+  async function decrypt(b64, pass) {
+    var raw = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+    var salt = raw.slice(8, 16), ct = raw.slice(16);
+    var km = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]);
+    var bits = new Uint8Array(await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt: salt, iterations: 200000, hash: "SHA-256" },
+      km, 384));
+    var key = await crypto.subtle.importKey(
+      "raw", bits.slice(0, 32), "AES-CBC", false, ["decrypt"]);
+    var pt = await crypto.subtle.decrypt(
+      { name: "AES-CBC", iv: bits.slice(32, 48) }, key, ct);
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  document.getElementById("unlock").addEventListener("click", unlock);
+  document.getElementById("pw").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") unlock();
+  });
+
+  async function unlock() {
+    var err = document.getElementById("err");
+    err.textContent = "";
+    try {
+      var b64 = await (await fetch(DATA_URL)).text();
+      data = await decrypt(b64.trim(), document.getElementById("pw").value);
+    } catch (e) {
+      err.textContent = "That's not it — try again.";
+      return;
+    }
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("treewrap").style.display = "block";
+    render();
+    fit();
+  }
+
+  /* ---------- render ---------- */
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html !== undefined) n.innerHTML = html;
+    return n;
+  }
+
+  function initials(name) {
+    return name.split(/\s+/).slice(0, 2).map(function (w) { return w[0] || ""; }).join("");
+  }
+
+  function personTile(pid) {
+    var p = data.people[pid];
+    if (!p) return el("div");
+    var t = el("div", "person");
+    t.dataset.pid = pid;
+    var pic = el("div", "pic", '<span>' + initials(p.name) + '</span><img alt="">');
+    t.appendChild(pic);
+    var img = pic.querySelector("img");
+    var saved = localStorage.getItem("ftphoto:" + pid);
+    if (saved === "hidden") { /* keep initials */ }
+    else if (saved) { img.src = saved; img.style.display = "block"; pic.querySelector("span").style.display = "none"; }
+    else {
+      img.src = "assets/family/" + pid + ".jpg";
+      img.onload = function () { img.style.display = "block"; pic.querySelector("span").style.display = "none"; };
+      img.onerror = function () { img.remove(); };
+    }
+    t.appendChild(el("div", "pname", p.name));
+    var bits = [];
+    if (p.birthday) bits.push(p.birthday);
+    if (p.phone) bits.push(p.phone);
+    if (p.email) bits.push('<a href="mailto:' + p.email + '">' + p.email + "</a>");
+    if (p.address) bits.push(p.address);
+    t.appendChild(el("div", "pinfo", bits.join("<br>")));
+
+    var mb = el("button", "pmenu-btn", "⋯");
+    var menu = el("div", "pmenu");
+    var rep = el("button", "", "Replace photo");
+    var rem = el("button", "", "Remove photo");
+    menu.appendChild(rep); menu.appendChild(rem);
+    t.appendChild(mb); t.appendChild(menu);
+    mb.addEventListener("click", function (e) {
+      e.stopPropagation();
+      document.querySelectorAll(".pmenu.open").forEach(function (m) { m.classList.remove("open"); });
+      menu.classList.add("open");
+    });
+    rep.addEventListener("click", function (e) {
+      e.stopPropagation(); menu.classList.remove("open");
+      var picker = document.getElementById("photopick");
+      picker.onchange = function () {
+        var f = picker.files[0];
+        if (!f) return;
+        var r = new FileReader();
+        r.onload = function () {
+          try { localStorage.setItem("ftphoto:" + pid, r.result); } catch (_) {}
+          var im = pic.querySelector("img") || pic.appendChild(el("img"));
+          im.src = r.result; im.style.display = "block";
+          pic.querySelector("span").style.display = "none";
+        };
+        r.readAsDataURL(f);
+        picker.value = "";
+      };
+      picker.click();
+    });
+    rem.addEventListener("click", function (e) {
+      e.stopPropagation(); menu.classList.remove("open");
+      localStorage.setItem("ftphoto:" + pid, "hidden");
+      var im = pic.querySelector("img");
+      if (im) im.style.display = "none";
+      pic.querySelector("span").style.display = "";
+    });
+    return t;
+  }
+
+  document.addEventListener("click", function () {
+    document.querySelectorAll(".pmenu.open").forEach(function (m) { m.classList.remove("open"); });
+  });
+
+  function render() {
+    var canvas = document.getElementById("canvas");
+    canvas.innerHTML = "";
+    var root = el("div", "rootnode");
+    root.appendChild(el("h2", "series-title wordmark",
+      data.root.name + (data.root.nickname ? " · “" + data.root.nickname + "”" : "")));
+    canvas.appendChild(root);
+
+    var row = el("div", "branches");
+    data.branches.forEach(function (b) {
+      var bx = el("div", "branch");
+      bx.appendChild(el("div", "branch-title", b.label));
+      var couple = el("div", "couple-row");
+      b.couple.forEach(function (pid) { couple.appendChild(personTile(pid)); });
+      if (b.couple.length) bx.appendChild(couple);
+      var hhs = el("div", "households");
+      b.households.forEach(function (hh) {
+        var hx = el("div", "household");
+        var mr = el("div", "couple-row");
+        hh.members.forEach(function (pid) { mr.appendChild(personTile(pid)); });
+        hx.appendChild(mr);
+        if (hh.kids.length) {
+          var kr = el("div", "kids-row");
+          hh.kids.forEach(function (pid) { kr.appendChild(personTile(pid)); });
+          hx.appendChild(kr);
+        }
+        hhs.appendChild(hx);
+      });
+      bx.appendChild(hhs);
+      if (b.unplaced && b.unplaced.length) {
+        bx.appendChild(el("div", "unplaced-note", "Also in this branch:"));
+        var ur = el("div", "kids-row");
+        b.unplaced.forEach(function (pid) { ur.appendChild(personTile(pid)); });
+        bx.appendChild(ur);
+      }
+      row.appendChild(bx);
+    });
+    canvas.appendChild(row);
+  }
+
+  /* ---------- pan & zoom ---------- */
+  var scale = 1, tx = 0, ty = 0;
+  var viewport = document.getElementById("viewport");
+  var canvas = document.getElementById("canvas");
+
+  function apply() {
+    canvas.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
+  }
+  function fit() {
+    var vw = viewport.clientWidth, cw = canvas.scrollWidth;
+    if (vw < 100 || cw < 100) {          // layout not settled yet
+      requestAnimationFrame(fit);
+      return;
+    }
+    scale = Math.max(0.12, Math.min(1, (vw - 40) / cw));
+    tx = 20; ty = 20;
+    apply();
+  }
+  function zoomAt(cx, cy, factor) {
+    var ns = Math.max(0.15, Math.min(3, scale * factor));
+    tx = cx - (cx - tx) * (ns / scale);
+    ty = cy - (cy - ty) * (ns / scale);
+    scale = ns;
+    apply();
+  }
+
+  viewport.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var r = viewport.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 0.89);
+  }, { passive: false });
+
+  document.getElementById("zin").addEventListener("click", function () {
+    zoomAt(viewport.clientWidth / 2, viewport.clientHeight / 2, 1.25);
+  });
+  document.getElementById("zout").addEventListener("click", function () {
+    zoomAt(viewport.clientWidth / 2, viewport.clientHeight / 2, 0.8);
+  });
+  document.getElementById("zfit").addEventListener("click", fit);
+
+  var pointers = new Map(), lastDist = 0, panning = null;
+  viewport.addEventListener("pointerdown", function (e) {
+    if (e.target.closest(".pmenu, .pmenu-btn, .zoombar, a")) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      panning = { x: e.clientX, y: e.clientY };
+      viewport.classList.add("grabbing");
+      viewport.setPointerCapture(e.pointerId);
+    }
+  });
+  viewport.addEventListener("pointermove", function (e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    var pts = Array.from(pointers.values());
+    if (pts.length === 2) {
+      var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (lastDist) {
+        var r = viewport.getBoundingClientRect();
+        zoomAt((pts[0].x + pts[1].x) / 2 - r.left,
+               (pts[0].y + pts[1].y) / 2 - r.top, d / lastDist);
+      }
+      lastDist = d;
+    } else if (panning) {
+      tx += e.clientX - panning.x;
+      ty += e.clientY - panning.y;
+      panning = { x: e.clientX, y: e.clientY };
+      apply();
+    }
+  });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) lastDist = 0;
+    if (pointers.size === 0) { panning = null; viewport.classList.remove("grabbing"); }
+  }
+  viewport.addEventListener("pointerup", endPointer);
+  viewport.addEventListener("pointercancel", endPointer);
+})();
+</script>
+
+</body>
+</html>

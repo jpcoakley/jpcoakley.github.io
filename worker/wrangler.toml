@@ -1,0 +1,13 @@
+name = "familytree-api"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+account_id = "4b65c3e179376d3874d25be52073276d"
+
+routes = [
+  { pattern = "jpcoakley.com/api/familytree*", zone_name = "jpcoakley.com" }
+]
+
+# kv namespace id is filled in at deploy time (wrangler kv namespace create)
+[[kv_namespaces]]
+binding = "FT_KV"
+id = "KV_ID_PLACEHOLDER"

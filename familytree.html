@@ -181,6 +181,25 @@
     cursor: pointer; text-align: left;
   }
   .pmenu button:hover { color: var(--red); }
+
+  /* inline contact editor */
+  .pedit { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.3rem; }
+  .pedit input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font: inherit; font-size: 0.62rem;
+    padding: 0.3rem 0.4rem;
+  }
+  .pedit button {
+    font: inherit; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 0.35rem 0; cursor: pointer;
+    background: none; border: 1px solid var(--blue); color: var(--blue);
+  }
+  .pedit button.pedit-cancel { border-color: var(--line); color: var(--muted); }
+  .pedit button:hover { border-color: var(--red); color: var(--red); }
+  .pedit-msg { font-size: 0.58rem; letter-spacing: 0.12em; color: var(--muted); min-height: 0.9em; }
 </style>
 </head>
 <body>
@@ -285,6 +304,9 @@
     if (e.key === "Enter") unlock();
   });
 
+  var currentPass = null;
+  var EDIT_FIELDS = ["birthday", "phone", "email", "addr1", "addr2"];
+
   async function tryUnlock(pass) {
     try {
       var b64 = await (await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })).text();
@@ -292,7 +314,19 @@
     } catch (e) {
       return false;
     }
+    currentPass = pass;
     try { localStorage.setItem("ftpass", pass); } catch (_) {}
+    // overlay live edits from the API (absent on localhost — skip quietly)
+    try {
+      var ov = await (await fetch("/api/familytree/overrides",
+        { headers: { "X-FT-Pass": pass }, cache: "no-store" })).json();
+      Object.keys(ov).forEach(function (pid) {
+        if (!data.people[pid]) return;
+        EDIT_FIELDS.forEach(function (f) {
+          if (typeof ov[pid][f] === "string") data.people[pid][f] = ov[pid][f];
+        });
+      });
+    } catch (_) {}
     document.getElementById("gate").style.display = "none";
     document.getElementById("treewrap").style.display = "block";
     buildUnits();
@@ -369,9 +403,14 @@
 
     var mb = el("button", "pmenu-btn", "⋯");
     var menu = el("div", "pmenu");
+    var edt = el("button", "", "Edit info");
     var rep = el("button", "", "Replace photo");
     var rem = el("button", "", "Remove photo");
-    menu.appendChild(rep); menu.appendChild(rem);
+    menu.appendChild(edt); menu.appendChild(rep); menu.appendChild(rem);
+    edt.addEventListener("click", function (e) {
+      e.stopPropagation(); menu.classList.remove("open");
+      openEditor(t, pid);
+    });
     t.appendChild(mb); t.appendChild(menu);
     mb.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -409,6 +448,57 @@
   document.addEventListener("click", function () {
     document.querySelectorAll(".pmenu.open").forEach(function (m) { m.classList.remove("open"); });
   });
+
+  /* ---------- inline contact editor ---------- */
+  function openEditor(tile, pid) {
+    var p = data.people[pid];
+    var old = tile.querySelector(".pinfo");
+    var form = el("div", "pedit");
+    var labels = { birthday: "birthday", phone: "phone", email: "email",
+                   addr1: "street", addr2: "city, st zip" };
+    var inputs = {};
+    EDIT_FIELDS.forEach(function (f) {
+      var inp = el("input");
+      inp.placeholder = labels[f];
+      inp.value = p[f] || "";
+      inputs[f] = inp;
+      form.appendChild(inp);
+    });
+    var who = el("input");
+    who.placeholder = "your name (shown as editor)";
+    who.value = localStorage.getItem("ftname") || "";
+    form.appendChild(who);
+    var msg = el("div", "pedit-msg", "");
+    var save = el("button", "pedit-save", "Save");
+    var cancel = el("button", "pedit-cancel", "Cancel");
+    form.appendChild(save); form.appendChild(cancel); form.appendChild(msg);
+    old.style.display = "none";
+    old.after(form);
+
+    cancel.addEventListener("click", function () {
+      form.remove(); old.style.display = "";
+    });
+    save.addEventListener("click", async function () {
+      if (!who.value.trim()) { msg.textContent = "add your name"; return; }
+      try { localStorage.setItem("ftname", who.value.trim()); } catch (_) {}
+      var body = { editor: who.value.trim() };
+      EDIT_FIELDS.forEach(function (f) { body[f] = inputs[f].value.trim(); });
+      msg.textContent = "saving…";
+      try {
+        var r = await fetch("/api/familytree/person/" + pid, {
+          method: "PUT",
+          headers: { "X-FT-Pass": currentPass,
+                     "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        EDIT_FIELDS.forEach(function (f) { p[f] = body[f]; });
+        render();
+      } catch (e) {
+        msg.textContent = "couldn't save — try again";
+      }
+    });
+  }
 
   /* ---------- unit model: expandable couples per generation ---------- */
   var units = {}, expanded = {};
@@ -554,7 +644,7 @@
   var pointers = new Map(), lastDist = 0, panning = null;
   var downTarget = null, movedTotal = 0;
   viewport.addEventListener("pointerdown", function (e) {
-    if (e.target.closest(".pmenu, .pmenu-btn, .zoombar, a")) return;
+    if (e.target.closest(".pmenu, .pmenu-btn, .zoombar, a, .pedit, input, button")) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       panning = { x: e.clientX, y: e.clientY };
@@ -593,7 +683,7 @@
       // are detected here: a press that barely moved on an expandable unit
       if (e.type === "pointerup" && movedTotal < 8 && downTarget) {
         var unit = downTarget.closest(".unit.expandable");
-        if (unit && !downTarget.closest("a, .pmenu, .pmenu-btn")) {
+        if (unit && !downTarget.closest("a, .pmenu, .pmenu-btn, .pedit, input, button")) {
           expanded[unit.dataset.uid] = !expanded[unit.dataset.uid];
           render();
         }

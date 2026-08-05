@@ -808,19 +808,14 @@
   }
 
   viewport.addEventListener("wheel", function (e) {
+    // only intercept pinch-zoom (ctrl+wheel); a plain two-finger scroll
+    // falls through so the page scrolls like any normal site
+    if (!e.ctrlKey) return;
     e.preventDefault();
     var r = viewport.getBoundingClientRect();
     var lines = e.deltaMode === 1 ? 16 : 1;
-    if (e.ctrlKey) {
-      // pinch-to-zoom (trackpad) or ctrl+wheel (mouse)
-      var f = Math.max(0.85, Math.min(1.18, Math.exp(-e.deltaY * lines * 0.01)));
-      zoomAt(e.clientX - r.left, e.clientY - r.top, f);
-    } else {
-      // two-finger swipe / plain wheel → pan
-      tx -= e.deltaX * lines;
-      ty -= e.deltaY * lines;
-      apply();
-    }
+    var f = Math.max(0.85, Math.min(1.18, Math.exp(-e.deltaY * lines * 0.01)));
+    zoomAt(e.clientX - r.left, e.clientY - r.top, f);
   }, { passive: false });
 
   document.getElementById("zin").addEventListener("click", function () {

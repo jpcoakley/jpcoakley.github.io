@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <rect width="800" height="450" fill="#F4EEE2"/>
+  <rect x="26" y="26" width="748" height="398" fill="none" stroke="#B4472B" stroke-width="2"/>
+  <rect x="40" y="40" width="720" height="370" fill="none" stroke="#B4472B" stroke-width="2" stroke-dasharray="3 9"/>
+  <text x="400" y="215" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="150" fill="#1A1712" text-anchor="middle">210</text>
+  <circle cx="400" cy="300" r="46" fill="none" stroke="#1A1712" stroke-width="2.5"/>
+  <circle cx="400" cy="300" r="58" fill="none" stroke="#B4472B" stroke-width="1.5"/>
+  <text x="400" y="311" font-family="Georgia, serif" font-weight="700" font-size="30" fill="#1A1712" text-anchor="middle">210</text>
+  <text x="400" y="386" font-family="Georgia, serif" font-size="20" letter-spacing="3" fill="#6B6355" text-anchor="middle">A PERSONAL HABIT, CATALOGUED.</text>
+</svg>

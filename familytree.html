@@ -810,10 +810,17 @@
   viewport.addEventListener("wheel", function (e) {
     e.preventDefault();
     var r = viewport.getBoundingClientRect();
-    // gentle, delta-proportional zoom (capped per event)
-    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
-    var f = Math.max(0.87, Math.min(1.15, Math.exp(-dy * 0.0022)));
-    zoomAt(e.clientX - r.left, e.clientY - r.top, f);
+    var lines = e.deltaMode === 1 ? 16 : 1;
+    if (e.ctrlKey) {
+      // pinch-to-zoom (trackpad) or ctrl+wheel (mouse)
+      var f = Math.max(0.85, Math.min(1.18, Math.exp(-e.deltaY * lines * 0.01)));
+      zoomAt(e.clientX - r.left, e.clientY - r.top, f);
+    } else {
+      // two-finger swipe / plain wheel → pan
+      tx -= e.deltaX * lines;
+      ty -= e.deltaY * lines;
+      apply();
+    }
   }, { passive: false });
 
   document.getElementById("zin").addEventListener("click", function () {

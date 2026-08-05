@@ -10,6 +10,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=12">
 <style>
+  /* light theme for this page only */
+  body {
+    --paper: #FFFFFF;
+    --ink: #1E2A3A;
+    --blue: #385A8C;
+    --red: #C82828;
+    --muted: #8B8B85;
+    --line: #DDDCD4;
+    --panel: #F7F7F4;
+  }
+
   /* ---------- gate ---------- */
   .gate {
     min-height: 60vh;
@@ -63,7 +74,7 @@
     min-height: 480px;
     border: 1px solid var(--line);
     background:
-      radial-gradient(circle at 50% 0%, rgba(143,176,217,0.06), transparent 60%);
+      radial-gradient(circle at 50% 0%, rgba(56,90,140,0.04), transparent 60%);
     cursor: grab;
     touch-action: none;
     user-select: none;
@@ -74,8 +85,7 @@
     position: absolute;
     left: 0; top: 0;
     transform-origin: 0 0;
-    padding: 3rem;
-    display: inline-block;
+    display: block;
   }
   .zoombar {
     position: absolute;
@@ -86,43 +96,29 @@
   }
   .zoombar button { padding: 0.45rem 0.9rem; background: var(--paper); }
 
-  /* ---------- generational rows ---------- */
-  .genrow {
-    display: flex;
-    align-items: flex-start;
-    gap: 1.4rem;
-    margin-bottom: 2.6rem;
-  }
-  .genrow-label {
-    flex: 0 0 auto;
+  /* ---------- tidy tree: absolute-positioned units + connectors ---------- */
+  #wires { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .rowtag {
+    position: absolute;
+    left: 0.6rem;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     font-size: 0.6rem; font-weight: 600;
     letter-spacing: 0.3em; text-transform: uppercase;
     color: var(--muted);
-    align-self: stretch;
-    text-align: center;
   }
-  .gengroup {
-    border: 1px solid var(--line);
-    background: rgba(255,255,255,0.02);
-    padding: 0.9rem;
-    flex: 0 0 auto;
-  }
-  .gengroup > .kicker { margin-bottom: 0.6rem; font-size: 0.58rem; }
-  .unit-row { display: flex; gap: 1rem; align-items: flex-start; }
   .unit {
-    position: relative;
+    position: absolute;
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
     align-items: flex-start;
-    padding: 0.5rem 0.5rem 1.4rem;
+    padding: 8px 8px 1.5rem;
     border: 1px solid transparent;
-    flex: 0 0 auto;
+    background: var(--paper);
   }
   .unit.expandable { border-color: var(--line); cursor: pointer; }
   .unit.expandable:hover { border-color: var(--blue); }
-  .unit.open { border-color: var(--blue); background: rgba(143,176,217,0.05); }
+  .unit.open { border-color: var(--blue); background: rgba(56,90,140,0.05); }
   .expander {
     position: absolute;
     bottom: 0.25rem; left: 50%;
@@ -149,7 +145,7 @@
     border-radius: 50%;
     overflow: hidden;
     margin: 0 auto 0.5rem;
-    background: rgba(143,176,217,0.14);
+    background: rgba(56,90,140,0.12);
     display: flex; align-items: center; justify-content: center;
     color: var(--blue);
     font-weight: 600; letter-spacing: 0.1em; font-size: 1rem;
@@ -185,7 +181,7 @@
   /* inline contact editor */
   .pedit { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.3rem; }
   .pedit input {
-    background: rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.04);
     border: 1px solid var(--line);
     color: var(--ink);
     font: inherit; font-size: 0.62rem;
@@ -694,34 +690,95 @@
   function render() {
     var canvas = document.getElementById("canvas");
     canvas.innerHTML = "";
-    // row of groups; each group = the revealed family of one expanded unit
-    var rows = [[{ label: null, units: ["root"] }]];
-    for (var depth = 0; depth < 6; depth++) {
-      var next = [];
-      rows[depth].forEach(function (group) {
-        group.units.forEach(function (uid) {
-          var u = units[uid];
-          if (expanded[uid] && u.kids.length) {
-            next.push({ label: unitName(u), units: u.kids });
-          }
-        });
-      });
-      if (!next.length) break;
-      rows.push(next);
+
+    var TILE_W = 168, TILE_GAP = 8, PAD = 8, ROW_H = 340, H_GAP = 64, M = 60;
+
+    function unitWidth(u) {
+      var n = u.tiles.length;
+      return n * TILE_W + (n - 1) * TILE_GAP + PAD * 2 + 2;
     }
-    rows.forEach(function (groups, depth) {
-      var row = el("div", "genrow");
-      row.appendChild(el("div", "genrow-label", GEN_LABELS[depth + 1] || ""));
-      groups.forEach(function (group) {
-        var g = el("div", "gengroup");
-        if (group.label) g.appendChild(el("p", "kicker", group.label));
-        var ur = el("div", "unit-row");
-        group.units.forEach(function (uid) { ur.appendChild(unitEl(units[uid])); });
-        g.appendChild(ur);
-        row.appendChild(g);
-      });
-      canvas.appendChild(row);
+
+    // tidy tree: a unit is centred over its children; siblings shift as
+    // neighbouring subtrees expand
+    var maxDepth = 0;
+    function measure(uid, depth) {
+      var u = units[uid];
+      if (depth > maxDepth) maxDepth = depth;
+      var node = { uid: uid, depth: depth, unitW: unitWidth(u), children: [] };
+      if (expanded[uid] && u.kids.length) {
+        node.children = u.kids.map(function (k) { return measure(k, depth + 1); });
+        node.childrenW = node.children.reduce(function (s, c) { return s + c.w; }, 0) +
+                         H_GAP * (node.children.length - 1);
+        node.w = Math.max(node.unitW, node.childrenW);
+      } else {
+        node.w = node.unitW;
+      }
+      return node;
+    }
+    var flat = [];
+    function place(node, x) {
+      flat.push(node);
+      if (node.children.length) {
+        var cx = x + (node.w - node.childrenW) / 2;
+        node.children.forEach(function (c) {
+          c.parentNode = node;
+          place(c, cx);
+          cx += c.w + H_GAP;
+        });
+        // centre the parent over its actual children (tidy-tree rule)
+        var first = node.children[0], last = node.children[node.children.length - 1];
+        var mid = (first.centerX + last.centerX) / 2;
+        node.centerX = mid;
+        node.unitX = mid - node.unitW / 2;
+      } else {
+        node.centerX = x + node.w / 2;
+        node.unitX = node.centerX - node.unitW / 2;
+      }
+    }
+    var tree = measure("root", 0);
+    place(tree, M);
+    canvas.style.width = (tree.w + M * 2) + "px";
+    canvas.style.height = ((maxDepth + 1) * ROW_H + M * 2) + "px";
+
+    var boxes = {};
+    flat.forEach(function (node) {
+      var b = unitEl(units[node.uid]);
+      b.style.left = node.unitX + "px";
+      b.style.top = (M + node.depth * ROW_H) + "px";
+      canvas.appendChild(b);
+      boxes[node.uid] = b;
     });
+
+    for (var d = 0; d <= maxDepth; d++) {
+      var tag = el("div", "rowtag", GEN_LABELS[d + 1] || "");
+      tag.style.top = (M + d * ROW_H) + "px";
+      canvas.appendChild(tag);
+    }
+
+    // elbow connectors parent -> child, using real rendered heights
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "wires";
+    svg.setAttribute("width", parseFloat(canvas.style.width));
+    svg.setAttribute("height", parseFloat(canvas.style.height));
+    var dPath = "";
+    flat.forEach(function (node) {
+      if (!node.parentNode) return;
+      var pb = boxes[node.parentNode.uid], cb = boxes[node.uid];
+      var px = pb.offsetLeft + pb.offsetWidth / 2;
+      var py = pb.offsetTop + pb.offsetHeight;
+      var cx2 = cb.offsetLeft + cb.offsetWidth / 2;
+      var cy = cb.offsetTop;
+      var my = (py + cy) / 2;
+      dPath += "M" + px + " " + py + " L" + px + " " + my +
+               " L" + cx2 + " " + my + " L" + cx2 + " " + cy + " ";
+    });
+    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", dPath);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-width", "1.5");
+    path.style.stroke = "var(--line)";
+    svg.appendChild(path);
+    canvas.insertBefore(svg, canvas.firstChild);
   }
 
   /* ---------- pan & zoom ---------- */
@@ -755,7 +812,7 @@
     var r = viewport.getBoundingClientRect();
     // gentle, delta-proportional zoom (capped per event)
     var dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
-    var f = Math.max(0.94, Math.min(1.06, Math.exp(-dy * 0.0006)));
+    var f = Math.max(0.91, Math.min(1.10, Math.exp(-dy * 0.0009)));
     zoomAt(e.clientX - r.left, e.clientY - r.top, f);
   }, { passive: false });
 

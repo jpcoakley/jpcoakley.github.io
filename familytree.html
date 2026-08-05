@@ -316,7 +316,18 @@
     }
     currentPass = pass;
     try { localStorage.setItem("ftpass", pass); } catch (_) {}
-    // overlay live edits from the API (absent on localhost — skip quietly)
+    // overlay live edits + added people from the API (absent on localhost)
+    additions = {};
+    try {
+      additions = await (await fetch("/api/familytree/additions",
+        { headers: { "X-FT-Pass": pass }, cache: "no-store" })).json();
+    } catch (_) { additions = {}; }
+    Object.keys(additions).forEach(function (pid) {
+      var a = additions[pid];
+      data.people[pid] = { id: pid, name: a.name, birthday: a.birthday || "",
+        phone: a.phone || "", email: a.email || "",
+        addr1: a.addr1 || "", addr2: a.addr2 || "" };
+    });
     try {
       var ov = await (await fetch("/api/familytree/overrides",
         { headers: { "X-FT-Pass": pass }, cache: "no-store" })).json();
@@ -404,13 +415,40 @@
     var mb = el("button", "pmenu-btn", "⋯");
     var menu = el("div", "pmenu");
     var edt = el("button", "", "Edit info");
+    var addP = el("button", "", "Add partner");
+    var addC = el("button", "", "Add child");
     var rep = el("button", "", "Replace photo");
     var rem = el("button", "", "Remove photo");
-    menu.appendChild(edt); menu.appendChild(rep); menu.appendChild(rem);
+    menu.appendChild(edt); menu.appendChild(addP); menu.appendChild(addC);
+    menu.appendChild(rep); menu.appendChild(rem);
     edt.addEventListener("click", function (e) {
       e.stopPropagation(); menu.classList.remove("open");
       openEditor(t, pid);
     });
+    addP.addEventListener("click", function (e) {
+      e.stopPropagation(); menu.classList.remove("open");
+      openAddForm(t, pid, "partner");
+    });
+    addC.addEventListener("click", function (e) {
+      e.stopPropagation(); menu.classList.remove("open");
+      openAddForm(t, pid, "child");
+    });
+    if (pid.indexOf("x-") === 0) {
+      var del = el("button", "", "Remove person");
+      menu.appendChild(del);
+      del.addEventListener("click", async function (e) {
+        e.stopPropagation(); menu.classList.remove("open");
+        if (!confirm("Remove " + p.name + " from the tree?")) return;
+        try {
+          var r = await fetch("/api/familytree/additions/" + pid, {
+            method: "DELETE", headers: { "X-FT-Pass": currentPass } });
+          if (!r.ok) throw new Error();
+          delete additions[pid];
+          buildUnits();
+          render();
+        } catch (_) { alert("Couldn't remove — try again."); }
+      });
+    }
     t.appendChild(mb); t.appendChild(menu);
     mb.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -448,6 +486,59 @@
   document.addEventListener("click", function () {
     document.querySelectorAll(".pmenu.open").forEach(function (m) { m.classList.remove("open"); });
   });
+
+  /* ---------- add partner / child ---------- */
+  function openAddForm(tile, anchorPid, role) {
+    var old = tile.querySelector(".pinfo");
+    var existing = tile.querySelector(".pedit");
+    if (existing) existing.remove();
+    var form = el("div", "pedit");
+    form.appendChild(el("div", "pedit-msg",
+      (role === "partner" ? "Adding partner of " : "Adding child of ") +
+      data.people[anchorPid].name));
+    var name = el("input"); name.placeholder = "full name (required)";
+    var bday = el("input"); bday.placeholder = "birthday (optional)";
+    var who = el("input"); who.placeholder = "your name (shown as editor)";
+    who.value = localStorage.getItem("ftname") || "";
+    form.appendChild(name); form.appendChild(bday); form.appendChild(who);
+    var msg = el("div", "pedit-msg", "");
+    var save = el("button", "pedit-save", "Add");
+    var cancel = el("button", "pedit-cancel", "Cancel");
+    form.appendChild(save); form.appendChild(cancel); form.appendChild(msg);
+    old.style.display = "none";
+    old.after(form);
+    cancel.addEventListener("click", function () {
+      form.remove(); old.style.display = "";
+    });
+    save.addEventListener("click", async function () {
+      if (!name.value.trim()) { msg.textContent = "name is required"; return; }
+      if (!who.value.trim()) { msg.textContent = "add your name"; return; }
+      try { localStorage.setItem("ftname", who.value.trim()); } catch (_) {}
+      msg.textContent = "adding…";
+      try {
+        var r = await fetch("/api/familytree/additions", {
+          method: "POST",
+          headers: { "X-FT-Pass": currentPass,
+                     "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.value.trim(), role: role,
+            anchor: anchorPid, birthday: bday.value.trim(),
+            editor: who.value.trim() }),
+        });
+        var res = await r.json();
+        if (!r.ok || !res.ok) throw new Error();
+        additions[res.pid] = res.person;
+        data.people[res.pid] = { id: res.pid, name: res.person.name,
+          birthday: res.person.birthday || "" };
+        buildUnits();
+        Object.keys(units).forEach(function (uid) {   // reveal the new person
+          if (units[uid].kids.some(function (k) {
+            return units[k] && units[k].tiles.indexOf(res.pid) !== -1;
+          })) expanded[uid] = true;
+        });
+        render();
+      } catch (_) { msg.textContent = "couldn't add — try again"; }
+    });
+  }
 
   /* ---------- inline contact editor ---------- */
   function openEditor(tile, pid) {
@@ -501,7 +592,7 @@
   }
 
   /* ---------- unit model: expandable couples per generation ---------- */
-  var units = {}, expanded = {};
+  var units = {}, expanded = {}, additions = {};
 
   function firstName(pid) {
     var p = data.people[pid];
@@ -509,6 +600,7 @@
   }
 
   function buildUnits() {
+    units = {};
     data.people["jack-root"] = { id: "jack-root", name: data.root.name +
       (data.root.nickname ? " “" + data.root.nickname + "”" : "") };
     var rootKids = [];
@@ -535,6 +627,36 @@
       rootKids.push(bid);
     });
     units.root = { id: "root", tiles: ["jack-root"], kids: rootKids };
+
+    // graft online additions (partners join a unit, children hang below it)
+    var pids = Object.keys(additions).sort(function (a, b) {
+      return (additions[a].createdAt || "").localeCompare(
+              additions[b].createdAt || "");
+    });
+    pids.forEach(function (pid) {
+      var a = additions[pid];
+      var host = null;
+      Object.keys(units).some(function (uid) {
+        if (units[uid].tiles.indexOf(a.anchor) !== -1) {
+          host = units[uid];
+          return true;
+        }
+        return false;
+      });
+      if (!host || host.id === "root") return;
+      if (a.role === "partner") {
+        if (host.tiles.indexOf(pid) === -1) host.tiles.push(pid);
+      } else {
+        if (host.id.indexOf("b:") === 0) {
+          // child of a 2nd-gen couple: becomes its own little household
+          var hid = "ah-" + pid;
+          units[hid] = { id: hid, tiles: [pid], kids: [] };
+          host.kids.push(hid);
+        } else {
+          host.kids.push(leafUnit(pid));
+        }
+      }
+    });
   }
 
   function leafUnit(pid) {
@@ -566,14 +688,15 @@
   }
 
   var GEN_LABELS = ["", "1st generation", "2nd generation",
-                    "3rd generation", "4th generation"];
+                    "3rd generation", "4th generation",
+                    "5th generation", "6th generation"];
 
   function render() {
     var canvas = document.getElementById("canvas");
     canvas.innerHTML = "";
     // row of groups; each group = the revealed family of one expanded unit
     var rows = [[{ label: null, units: ["root"] }]];
-    for (var depth = 0; depth < 4; depth++) {
+    for (var depth = 0; depth < 6; depth++) {
       var next = [];
       rows[depth].forEach(function (group) {
         group.units.forEach(function (uid) {

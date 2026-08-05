@@ -812,7 +812,7 @@
     var r = viewport.getBoundingClientRect();
     // gentle, delta-proportional zoom (capped per event)
     var dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
-    var f = Math.max(0.91, Math.min(1.10, Math.exp(-dy * 0.0009)));
+    var f = Math.max(0.87, Math.min(1.15, Math.exp(-dy * 0.0022)));
     zoomAt(e.clientX - r.left, e.clientY - r.top, f);
   }, { passive: false });
 

@@ -675,8 +675,8 @@
       var n = u.kids.reduce(function (s, kid) {
         return s + units[kid].tiles.length;
       }, 0);
-      box.appendChild(el("span", "expander",
-        expanded[u.id] ? "− collapse" : "+ " + n));
+      // show "+ N" only while collapsed; expanded units collapse on tap
+      if (!expanded[u.id]) box.appendChild(el("span", "expander", "+ " + n));
       // expand/collapse fires from the viewport's tap detection (pointer
       // capture would swallow a click handler here)
     }

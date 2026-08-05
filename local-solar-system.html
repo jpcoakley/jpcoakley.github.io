@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Solar System — JP Coakley</title>
+<meta name="description" content="A custom-scaled model of the solar system for your street, trail, or town — engraved plaques for the Sun and all eight planets, computed for your chosen scale.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=12">
+<style>
+  /* ---------- Local Solar System page ---------- */
+
+  .lss-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: center;
+    padding: 4rem 0 2rem;
+  }
+  @media (max-width: 820px) { .lss-hero { grid-template-columns: 1fr; } }
+
+  .lss-hero img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+
+  .lss-section { margin-top: 5rem; }
+
+  .lss-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .lss-step-num {
+    font-family: "Michroma", "Archivo", sans-serif;
+    font-size: 1.5rem;
+    color: var(--red);
+    margin-bottom: 0.6rem;
+  }
+
+  /* ---------- scale controls ---------- */
+
+  .lss-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 2rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .lss-controls input, .lss-controls select {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    padding: 0.55rem 0.8rem;
+  }
+
+  .lss-controls input { width: 7.5rem; }
+  .lss-controls input:focus, .lss-controls select:focus { outline: 2px solid var(--blue); }
+
+  .lss-fact { margin-top: 1.5rem; max-width: 44rem; color: var(--muted); font-size: 0.9rem; }
+  .lss-fact strong { color: var(--blue); font-weight: 600; }
+
+  /* ---------- plaques ---------- */
+
+  .plaque-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .plaque {
+    background: #F4F1E6;
+    color: #101010;
+    padding: 8px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  .plaque::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border: 2px dotted #101010;
+    pointer-events: none;
+  }
+
+  .plaque-inner {
+    border: 2px solid #101010;
+    margin: 7px;
+    padding: 1.1rem 1.15rem 1rem;
+    position: relative;
+    font-family: "Michroma", "Archivo", sans-serif;
+  }
+
+  .plaque-star {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    color: #101010;
+  }
+  .plaque-star.tl { top: 7px;  left: 7px; }
+  .plaque-star.tr { top: 7px;  right: 7px; }
+  .plaque-star.bl { bottom: 7px; left: 7px; }
+  .plaque-star.br { bottom: 7px; right: 7px; }
+
+  .plaque-title {
+    text-align: center;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+  }
+
+  .plaque-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    min-height: 96px;
+  }
+
+  .plaque-rows { flex: 1 1 auto; }
+
+  .plaque-row { margin-bottom: 0.65rem; }
+  .plaque-row:last-child { margin-bottom: 0; }
+
+  .plaque-label {
+    font-size: 0.48rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .plaque-value {
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    margin-top: 0.1rem;
+  }
+
+  .plaque-orb-box {
+    flex: 0 0 84px;
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .plaque-orb {
+    border-radius: 50%;
+    border: 1.5px solid #101010;
+    background:
+      radial-gradient(circle at 38% 32%, transparent 0 22%, rgba(16,16,16,0.16) 23% 0),
+      radial-gradient(#101010 0.7px, transparent 1px);
+    background-size: 100% 100%, 3.5px 3.5px;
+  }
+
+  .plaque-orb.sun {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(16,16,16,0.25) 0 30%, transparent 31%),
+      radial-gradient(#101010 0.7px, transparent 1px);
+    background-size: 100% 100%, 3px 3px;
+  }
+
+  .plaque-name {
+    text-align: center;
+    font-size: 1.05rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-top: 0.9rem;
+    white-space: nowrap;
+  }
+
+  /* ---------- buy ---------- */
+
+  .lss-buy {
+    margin-top: 5rem;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: clamp(1.75rem, 4vw, 3rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .lss-price {
+    font-family: "Michroma", "Archivo", sans-serif;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: var(--ink);
+  }
+
+  .lss-price small {
+    display: block;
+    font-family: "Archivo", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+
+  .lss-buy-btn {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: #F4F1E6;
+    background: var(--red);
+    padding: 1rem 2.2rem;
+    text-decoration: none;
+    transition: transform 120ms ease, background 120ms ease;
+  }
+
+  .lss-buy-btn:hover { transform: translateY(-2px); background: #E85A50; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="site-name" href="index.html">JP&nbsp;Coakley</a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="photography.html">Photography</a>
+    <a href="about.html" class="active">About Me</a>
+  </nav>
+</header>
+
+<main>
+  <p class="kicker" style="margin-top:4rem"><a class="crumb" href="about.html">&larr; About Me</a></p>
+
+  <div class="lss-hero">
+    <div>
+      <h1 class="page-title wordmark" style="margin-top:0">Local Solar System</h1>
+      <p class="lede">
+        The solar system, shrunk to fit your neighborhood. A set of nine engraved
+        plaques — the Sun and all eight planets — custom-computed for your scale
+        and ready to install along your street, trail, office hallway, or backyard fence.
+      </p>
+      <p class="lede">
+        Pick where your Sun lives and how far your Neptune roams. Every plaque is
+        engraved with its scaled distance, scaled diameter, and the time light
+        actually takes to get there.
+      </p>
+    </div>
+    <img src="assets/local-solar-system/plaque-mercury.png" alt="Local Solar System plaque for Mercury, showing fields for scaled distance, scaled diameter, and light travel time">
+  </div>
+
+  <section class="lss-section">
+    <p class="kicker">Preview Your System</p>
+    <p class="lede">
+      How far is it from your Sun to your Neptune? Type a distance and watch the
+      whole solar system settle into your neighborhood.
+    </p>
+
+    <div class="lss-controls">
+      <label for="lss-distance">Sun&nbsp;&rarr;&nbsp;Neptune</label>
+      <input id="lss-distance" type="number" inputmode="decimal" min="1" value="2640">
+      <select id="lss-unit" aria-label="Unit">
+        <option value="ft" selected>feet</option>
+        <option value="m">meters</option>
+      </select>
+    </div>
+
+    <p class="lss-fact" id="lss-fact"></p>
+
+    <div class="plaque-grid" id="lss-plaques"></div>
+
+    <p class="lss-fact" style="margin-top:2rem">
+      Light travel time doesn&rsquo;t shrink — that&rsquo;s the real thing. Walking
+      your system Sun to Neptune, you&rsquo;ll beat sunlight&rsquo;s four-hour trip
+      by about three and a half hours.
+    </p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="kicker">How It Works</p>
+    <div class="lss-steps">
+      <div class="card">
+        <div class="lss-step-num">01</div>
+        <h2>Claim your system</h2>
+        <p>Check out below. Every system is made to order — one scale, one place, yours.</p>
+      </div>
+      <div class="card">
+        <div class="lss-step-num">02</div>
+        <h2>Plan the orbit</h2>
+        <p>I&rsquo;ll reach out to plan it with you — where the Sun goes, how far Neptune wanders, and what each plaque should say.</p>
+      </div>
+      <div class="card">
+        <div class="lss-step-num">03</div>
+        <h2>Install the planets</h2>
+        <p>Your nine plaques arrive engraved with your numbers, ready to mount. Walk your solar system whenever you like.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lss-buy" id="buy">
+    <div class="lss-price">
+      $1,994
+      <small>Custom-scaled set &middot; Sun + eight planets</small>
+    </div>
+    <!-- TODO: swap href for the Stripe Payment Link (buy.stripe.com/...) when created -->
+    <a class="lss-buy-btn" href="mailto:jpcoakley@gmail.com?subject=Local%20Solar%20System%20order">Order Yours</a>
+  </section>
+</main>
+
+<footer>
+  <span>JP Coakley</span>
+  <a class="contact-link" href="mailto:jpcoakley@gmail.com">Contact</a>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <polygon id="lss-star" points="10.00,0.00 9.10,5.49 6.17,0.76 7.44,6.18 2.93,2.93 6.18,7.44 0.76,6.17 5.49,9.10 0.00,10.00 5.49,10.90 0.76,13.83 6.18,12.56 2.93,17.07 7.44,13.82 6.17,19.24 9.10,14.51 10.00,20.00 10.90,14.51 13.83,19.24 12.56,13.82 17.07,17.07 13.82,12.56 19.24,13.83 14.51,10.90 20.00,10.00 14.51,9.10 19.24,6.17 13.82,7.44 17.07,2.93 12.56,6.18 13.83,0.76 10.90,5.49" fill="currentColor"/>
+  </defs>
+</svg>
+
+<script>
+(function () {
+  "use strict";
+
+  // km from the Sun, km diameter, minutes of light travel from the Sun
+  var BODIES = [
+    { name: "Sun",     dist: 0,          diam: 1391400, light: 0 },
+    { name: "Mercury", dist: 57.9e6,     diam: 4879,    light: 3.22 },
+    { name: "Venus",   dist: 108.2e6,    diam: 12104,   light: 6.02 },
+    { name: "Earth",   dist: 149.6e6,    diam: 12756,   light: 8.32 },
+    { name: "Mars",    dist: 227.9e6,    diam: 6792,    light: 12.67 },
+    { name: "Jupiter", dist: 778.5e6,    diam: 142984,  light: 43.28 },
+    { name: "Saturn",  dist: 1432.0e6,   diam: 120536,  light: 79.61 },
+    { name: "Uranus",  dist: 2867.0e6,   diam: 51118,   light: 159.39 },
+    { name: "Neptune", dist: 4515.0e6,   diam: 49528,   light: 251.02 }
+  ];
+  var NEPTUNE_KM = 4515.0e6;
+  var PROXIMA_KM = 4.017e13;          // Proxima Centauri, 4.246 light-years
+
+  var input = document.getElementById("lss-distance");
+  var unitSel = document.getElementById("lss-unit");
+  var grid = document.getElementById("lss-plaques");
+  var fact = document.getElementById("lss-fact");
+
+  function starCorners() {
+    var html = "";
+    ["tl", "tr", "bl", "br"].forEach(function (pos) {
+      html += '<svg class="plaque-star ' + pos + '" viewBox="0 0 20 20"><use href="#lss-star"/></svg>';
+    });
+    return html;
+  }
+
+  function fmt(n, digits) {
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: digits
+    });
+  }
+
+  // large distance along the walk
+  function fmtDistance(ft, metric) {
+    if (metric) {
+      var m = ft;                                    // already meters
+      return m < 100 ? fmt(m, 1) + " m" : fmt(Math.round(m), 0) + " m";
+    }
+    return ft < 100 ? fmt(ft, 1) + " ft" : fmt(Math.round(ft), 0) + " ft";
+  }
+
+  // small size — pick a unit that keeps the number readable
+  function fmtSize(ft, metric) {
+    if (metric) {
+      var mm = ft * 1000;                            // ft var holds meters here
+      if (mm < 10)   return fmt(mm, 1) + " mm";
+      if (mm < 1000) return fmt(Math.round(mm), 0) + " mm";
+      return fmt(ft, 2) + " m";
+    }
+    var inches = ft * 12;
+    if (inches < 1)  return fmt(inches, 2) + " in";
+    if (inches < 48) return fmt(inches, 1) + " in";
+    return fmt(ft, 1) + " ft";
+  }
+
+  function fmtLight(min) {
+    if (min === 0) return "You are here";
+    if (min < 60) {
+      var whole = Math.floor(min);
+      var sec = Math.round((min - whole) * 60);
+      return whole + " min " + (sec < 10 ? "0" : "") + sec + " s";
+    }
+    var h = Math.floor(min / 60);
+    var m = Math.round(min % 60);
+    return h + " hr " + m + " min";
+  }
+
+  // orb pixels: sqrt-compressed so Mercury stays visible next to the Sun
+  function orbPx(diamKm) {
+    var px = 78 * Math.sqrt(diamKm / 1391400);
+    return Math.max(7, Math.round(px));
+  }
+
+  function render() {
+    var val = parseFloat(input.value);
+    var metric = unitSel.value === "m";
+    if (!isFinite(val) || val <= 0) return;
+
+    var scale = val / NEPTUNE_KM;                    // (ft or m) per km
+    var html = "";
+
+    BODIES.forEach(function (b) {
+      var distTxt = b.dist === 0 ? "0 — start here" : fmtDistance(b.dist * scale, metric);
+      var diamTxt = fmtSize(b.diam * scale, metric);
+      var d = orbPx(b.diam);
+      html +=
+        '<div class="plaque">' +
+          '<div class="plaque-inner">' + starCorners() +
+            '<div class="plaque-title">Local Solar System</div>' +
+            '<div class="plaque-body">' +
+              '<div class="plaque-rows">' +
+                '<div class="plaque-row"><div class="plaque-label">Scaled Distance</div><div class="plaque-value">' + distTxt + "</div></div>" +
+                '<div class="plaque-row"><div class="plaque-label">Scaled Diameter</div><div class="plaque-value">' + diamTxt + "</div></div>" +
+                '<div class="plaque-row"><div class="plaque-label">Light Travel Time</div><div class="plaque-value">' + fmtLight(b.light) + "</div></div>" +
+              "</div>" +
+              '<div class="plaque-orb-box"><div class="plaque-orb' + (b.name === "Sun" ? " sun" : "") + '" style="width:' + d + "px;height:" + d + 'px"></div></div>' +
+            "</div>" +
+            '<div class="plaque-name">' + b.name + "</div>" +
+          "</div>" +
+        "</div>";
+    });
+
+    grid.innerHTML = html;
+
+    var sunSize = fmtSize(1391400 * scale, metric);
+    var proxima = PROXIMA_KM * scale;                // ft or m
+    var proximaTxt = metric
+      ? fmt(Math.round(proxima / 1000), 0) + " km"
+      : fmt(Math.round(proxima / 5280), 0) + " miles";
+    fact.innerHTML = "At this scale your Sun is <strong>" + sunSize +
+      "</strong> across — and the next star over, Proxima Centauri, lands about <strong>" +
+      proximaTxt + "</strong> away.";
+  }
+
+  input.addEventListener("input", render);
+  unitSel.addEventListener("change", render);
+  render();
+})();
+</script>
+
+</body>
+</html>

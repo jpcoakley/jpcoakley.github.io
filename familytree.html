@@ -66,17 +66,23 @@
   }
   #pweye.on { color: var(--blue); }
 
+  /* ---------- sticky title bar ---------- */
+  .ftbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--paper);
+    padding-top: 1.5rem;
+  }
+  .ftbar .page-title { margin: 0 0 0.4rem; }
+  .ftbar .kicker { margin: 0 0 1rem; }
+
   /* ---------- viewport / canvas ---------- */
   .treeview {
     position: relative;
-    overflow: hidden;
-    height: calc(100vh - 220px);
-    min-height: 480px;
-    border: 1px solid var(--line);
-    background:
-      radial-gradient(circle at 50% 0%, rgba(56,90,140,0.04), transparent 60%);
+    overflow: hidden;               /* horizontal pan; vertical flows to page */
     cursor: grab;
-    touch-action: none;
+    touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -88,11 +94,11 @@
     display: block;
   }
   .zoombar {
-    position: absolute;
-    right: 1rem; bottom: 1rem;
+    position: fixed;
+    right: 1.25rem; bottom: 1.25rem;
     display: flex;
     gap: 0.5rem;
-    z-index: 5;
+    z-index: 40;
   }
   .zoombar button { padding: 0.45rem 0.9rem; background: var(--paper); }
 
@@ -210,7 +216,9 @@
 </header>
 
 <main>
-  <h1 class="page-title wordmark" style="margin-top:2rem">Family Tree</h1>
+  <div class="ftbar" id="ftbar">
+    <h1 class="page-title wordmark">Family Tree</h1>
+  </div>
 
   <section class="gate" id="gate">
     <p class="kicker">Descendants of John Aloysius Coakley</p>
@@ -233,7 +241,6 @@
   </section>
 
   <section id="treewrap" style="display:none">
-    <p class="kicker" style="margin-bottom:1rem"><a class="crumb" href="#" id="lockbtn">lock</a></p>
     <div class="treeview" id="viewport">
       <div id="canvas"></div>
       <div class="zoombar">
@@ -360,7 +367,8 @@
     });
   }
 
-  document.getElementById("lockbtn").addEventListener("click", function (e) {
+  var lockBtn = document.getElementById("lockbtn");
+  if (lockBtn) lockBtn.addEventListener("click", function (e) {
     e.preventDefault();
     try { localStorage.removeItem("ftpass"); } catch (_) {}
     location.reload();
@@ -805,30 +813,46 @@
     svg.appendChild(mkPath(bloodPath, "var(--line)", "1.5"));
     svg.appendChild(mkPath(marryPath, "var(--blue)", "1.5"));
     canvas.insertBefore(svg, canvas.firstChild);
+
+    apply();   // re-clamp horizontal pan and resize viewport to new height
   }
 
-  /* ---------- pan & zoom ---------- */
-  var scale = 1, tx = 0, ty = 0;
+  /* ---------- pan & zoom ----------
+     The tree flows down the page (no fixed clipping box): the viewport is
+     sized to the scaled tree height so the page scrolls vertically and
+     nothing is cut off. Only horizontal position is panned via `tx`. */
+  var scale = 1, tx = 0;
   var viewport = document.getElementById("viewport");
   var canvas = document.getElementById("canvas");
 
+  // keep the sticky title bar tucked just under the sticky site nav
+  var ftbar = document.getElementById("ftbar");
+  var siteHeader = document.querySelector("header");
+  function placeBar() { if (ftbar && siteHeader) ftbar.style.top = siteHeader.offsetHeight + "px"; }
+  placeBar();
+  window.addEventListener("resize", placeBar);
+
+  function contentW() { return parseFloat(canvas.style.width) || 0; }
+  function contentH() { return parseFloat(canvas.style.height) || 0; }
+
   function apply() {
-    canvas.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
+    var vw = viewport.clientWidth;
+    var scaledW = contentW() * scale;
+    if (scaledW <= vw) tx = (vw - scaledW) / 2;      // centre when it fits
+    else tx = Math.max(vw - scaledW, Math.min(0, tx)); // clamp when wider
+    canvas.style.transform = "translate(" + tx + "px,0) scale(" + scale + ")";
+    viewport.style.height = (contentH() * scale) + "px";
   }
   function fit() {
-    var vw = viewport.clientWidth, cw = canvas.scrollWidth;
-    if (vw < 100 || cw < 100) {          // layout not settled yet
-      requestAnimationFrame(fit);
-      return;
-    }
-    scale = Math.max(0.12, Math.min(1, (vw - 40) / cw));
-    tx = 20; ty = 20;
+    var vw = viewport.clientWidth;
+    if (vw < 100 || contentW() < 100) { requestAnimationFrame(fit); return; }
+    scale = Math.max(0.12, Math.min(1, vw / (contentW() + 40)));
+    tx = 0;
     apply();
   }
   function zoomAt(cx, cy, factor) {
     var ns = Math.max(0.15, Math.min(3, scale * factor));
     tx = cx - (cx - tx) * (ns / scale);
-    ty = cy - (cy - ty) * (ns / scale);
     scale = ns;
     apply();
   }
@@ -886,12 +910,12 @@
       }
       lastDist = d;
     } else if (panning) {
-      movedTotal += Math.abs(e.clientX - panning.x) +
-                    Math.abs(e.clientY - panning.y);
-      tx += e.clientX - panning.x;
-      ty += e.clientY - panning.y;
-      panning = { x: e.clientX, y: e.clientY };
+      var ddx = e.clientX - panning.x, ddy = e.clientY - panning.y;
+      movedTotal += Math.abs(ddx) + Math.abs(ddy);
+      tx += ddx;
       apply();
+      if (ddy) window.scrollBy(0, -ddy);   // vertical drag scrolls the page
+      panning = { x: e.clientX, y: e.clientY };
     }
   });
   function endPointer(e) {

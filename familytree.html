@@ -110,7 +110,7 @@
   .unit {
     position: absolute;
     display: flex;
-    gap: 8px;
+    gap: 22px;
     align-items: flex-start;
     padding: 8px 8px 1.5rem;
     border: 1px solid transparent;
@@ -602,15 +602,9 @@
     var rootKids = [];
     data.branches.forEach(function (b) {
       var bid = "b:" + b.label;
-      // blood member (name closest to branch label) leads the couple
+      // blood descendant leads the couple, spouse second
       var couple = b.couple.slice().sort(function (x, y) {
-        function score(pid) {
-          var n = (data.people[pid] || {}).name || "";
-          return b.label.split(/\s+/).filter(function (t) {
-            return n.indexOf(t) !== -1;
-          }).length;
-        }
-        return score(y) - score(x);
+        return (data.people[y].blood ? 1 : 0) - (data.people[x].blood ? 1 : 0);
       });
       var kids = [];
       b.households.forEach(function (hh) {
@@ -691,7 +685,7 @@
     var canvas = document.getElementById("canvas");
     canvas.innerHTML = "";
 
-    var TILE_W = 168, TILE_GAP = 8, PAD = 8, ROW_H = 340, H_GAP = 64, M = 60;
+    var TILE_W = 168, TILE_GAP = 22, PAD = 8, ROW_H = 340, H_GAP = 64, M = 60;
 
     function unitWidth(u) {
       var n = u.tiles.length;
@@ -755,29 +749,61 @@
       canvas.appendChild(tag);
     }
 
-    // elbow connectors parent -> child, using real rendered heights
+    // connectors, using real rendered geometry:
+    //  - bloodline (grey): parent couple -> the child's blood descendant tile
+    //  - marriage line (blue): between the two spouse tiles of a couple
     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.id = "wires";
     svg.setAttribute("width", parseFloat(canvas.style.width));
     svg.setAttribute("height", parseFloat(canvas.style.height));
-    var dPath = "";
+
+    function tileOf(box, pid) {
+      return box.querySelector('.person[data-pid="' + pid + '"]');
+    }
+    function bloodTile(box, u) {
+      var pid = u.tiles.filter(function (p) {
+        return (data.people[p] || {}).blood;
+      })[0] || u.tiles[0];
+      return tileOf(box, pid) || box;
+    }
+
+    var bloodPath = "", marryPath = "";
     flat.forEach(function (node) {
-      if (!node.parentNode) return;
-      var pb = boxes[node.parentNode.uid], cb = boxes[node.uid];
-      var px = pb.offsetLeft + pb.offsetWidth / 2;
-      var py = pb.offsetTop + pb.offsetHeight;
-      var cx2 = cb.offsetLeft + cb.offsetWidth / 2;
-      var cy = cb.offsetTop;
-      var my = (py + cy) / 2;
-      dPath += "M" + px + " " + py + " L" + px + " " + my +
-               " L" + cx2 + " " + my + " L" + cx2 + " " + cy + " ";
+      var cb = boxes[node.uid], u = units[node.uid];
+      // marriage line between the two spouse tiles
+      if (u.tiles.length >= 2) {
+        var t0 = tileOf(cb, u.tiles[0]), t1 = tileOf(cb, u.tiles[1]);
+        if (t0 && t1) {
+          var yy = cb.offsetTop + t0.offsetTop + 44;
+          var xa = cb.offsetLeft + t0.offsetLeft + t0.offsetWidth;
+          var xb = cb.offsetLeft + t1.offsetLeft;
+          marryPath += "M" + xa + " " + yy + " L" + xb + " " + yy + " ";
+        }
+      }
+      // bloodline from parent couple down to this unit's blood descendant
+      if (node.parentNode) {
+        var pb = boxes[node.parentNode.uid];
+        var px = pb.offsetLeft + pb.offsetWidth / 2;
+        var py = pb.offsetTop + pb.offsetHeight;
+        var bt = bloodTile(cb, u);
+        var cx2 = cb.offsetLeft + bt.offsetLeft + bt.offsetWidth / 2;
+        var cy = cb.offsetTop;
+        var my = (py + cy) / 2;
+        bloodPath += "M" + px + " " + py + " L" + px + " " + my +
+                     " L" + cx2 + " " + my + " L" + cx2 + " " + cy + " ";
+      }
     });
-    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", dPath);
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke-width", "1.5");
-    path.style.stroke = "var(--line)";
-    svg.appendChild(path);
+
+    function mkPath(d, color, w) {
+      var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", d);
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke-width", w);
+      p.style.stroke = color;
+      return p;
+    }
+    svg.appendChild(mkPath(bloodPath, "var(--line)", "1.5"));
+    svg.appendChild(mkPath(marryPath, "var(--blue)", "1.5"));
     canvas.insertBefore(svg, canvas.firstChild);
   }
 

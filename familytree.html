@@ -753,7 +753,10 @@
   viewport.addEventListener("wheel", function (e) {
     e.preventDefault();
     var r = viewport.getBoundingClientRect();
-    zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 0.89);
+    // gentle, delta-proportional zoom (capped per event)
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+    var f = Math.max(0.94, Math.min(1.06, Math.exp(-dy * 0.0006)));
+    zoomAt(e.clientX - r.left, e.clientY - r.top, f);
   }, { passive: false });
 
   document.getElementById("zin").addEventListener("click", function () {
